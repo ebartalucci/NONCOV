@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 16.09.2023                 #
-#               Last:  07.02.2024                 #
+#               Last:  12.02.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.1.1.0                       #
@@ -12,14 +12,19 @@
 
 # If this work leads to publication, the following list shall be acknowledged:
 # - Ms. Olivia Gampp for helpful discussions and suggestions in displacement of fragments
-# - ChatGPT v3.5 used for debugging and support with the coding
-# - 
+# - in materials & methods section ChatGPT v3.5 used for debugging and support with the coding
+# - For ideas about displaying NMR Tensors: R.P. Young, C.R. Lewis, C. Yang, L. Wang, J.K. Harper, and L.J. Mueller, 2019
+
+
+# This work is an attempt to write a script running on minimal import packages
+# Runs on Python 3.8.5 and later
 
 # Import modules 
 import os
 import sys 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import re # RegEx
 
 # -------------------------- DONE --------------------------------#
@@ -417,17 +422,17 @@ def set_noncov_interactions():
 
 def set_boundary_distance_values(user_choice):
     # Set min and max effective distance values in Angstroem based on user's choice
-    if user_choice == 1: #Cation-pi interaction from https://doi.org/10.1016%2Fj.jmb.2021.167035
+    if user_choice == 1: # Cation-pi interaction from https://doi.org/10.1016%2Fj.jmb.2021.167035
         return 2, 6
-    elif user_choice == 2: #Anion-pi interaction from https://doi.org/10.1039%2Fc5sc01386k
+    elif user_choice == 2: # Anion-pi interaction from https://doi.org/10.1039%2Fc5sc01386k
         return 2, 5
-    elif user_choice == 3: #pi-pi interaction
+    elif user_choice == 3: # pi-pi interaction
         return 1, 5
-    elif user_choice == 4: #H-bond interaction from https://doi.org/10.1016/B978-012486052-0/50005-1
+    elif user_choice == 4: # H-bond interaction from https://doi.org/10.1016/B978-012486052-0/50005-1
         return 2.7, 3.3
-    elif user_choice == 5: #Polar-pi interaction
+    elif user_choice == 5: # Polar-pi interaction
         return 1, 5
-    elif user_choice == 6: #n-pi* interaction
+    elif user_choice == 6: # n-pi* interaction
         return 1, 5
 
 # ----------------------------------------------------------------#
@@ -439,7 +444,7 @@ def set_boundary_distance_values(user_choice):
 
 # ----------------------------------------------------------------#
 
-# -------------------------- start --------------------------------#
+# -------------------------- DONE --------------------------------#
 # ----------------------------------------------------------------#
 # SECTION 10: PLOTTING NMR DATA (III) IN PAS: DIAMAGNETIC, PARAMAGNETIC, TOTAL CSA TENSOR
 def extract_csa_tensor_in_pas(splitted_output_file):
@@ -544,10 +549,20 @@ def extract_csa_tensor_in_pas(splitted_output_file):
 # ----------------------------------------------------------------#
 
 
-# -------------------------- start --------------------------------#
+# -------------------------- DONE --------------------------------#
 # ----------------------------------------------------------------#
-# SECTION 11: PLOT MOLECULAR FRAME AND TENSORS ELLIPSOIDS
-def plot_3d_molecule_and_pas_tensor(molecule_path, sizes=None):
+# SECTION 11: PLOT MOLECULAR FRAME
+def plot_3d_molecule(molecule_path, sizes=None):
+    """
+    Load and plot the molecular coordinates in 3D and display them according to standard CPK convention.
+    Basically a very time consuming way to do what Avogadro does but worse.. Need fixing 
+    Input:
+    molecule_path: path to the xyz file to load and display
+    sizes: <optional> define atomic radii for pure graphical display, if not defined when function is called, they are taken from
+    default (atomic radii [pm] * 5)
+    """
+    # --------------------------------------------------------------------------------------------#
+    # 3D Molecular representation plot
     # Define CPK coloring representation for atom types: https://en.wikipedia.org/wiki/CPK_coloring
     cpk_colors = {
         'H': 'grey',
@@ -625,6 +640,11 @@ def plot_3d_molecule_and_pas_tensor(molecule_path, sizes=None):
 
 # ----------------------------------------------------------------#
 
+# -------------------------- start --------------------------------#
+# ----------------------------------------------------------------#
+# SECTION 12: PLOT TENSORS ELLIPSOIDS ON MOLECULAR FRAME
+
+# ----------------------------------------------------------------#
 
 # ----------------------------------------------------------------#
 # ----------------------- MAIN BLOCK -----------------------------#
