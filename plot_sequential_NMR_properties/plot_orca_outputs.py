@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 16.09.2023                 #
-#               Last:  12.02.2024                 #
+#               Last:  13.02.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.1.1.0                       #
@@ -544,7 +544,8 @@ def extract_csa_tensor_in_pas(splitted_output_file):
     # Extract all the nuclear identities in xyz file
     nuc_identity = list(sigma_tot.keys())
 
-    return sigma_dia, sigma_para, sigma_tot
+    return sigma_dia, sigma_para, sigma_tot, nuc_identity
+
 
 # ----------------------------------------------------------------#
 
@@ -709,6 +710,7 @@ def main():
 
     # Initialize nuclear identities
     nuclear_identities = []
+    nuclear_identities_2 = []
    
     # Extract NMR data from parameter files
     for job_number in range (1, n_jobs+1): #Property files = number of jobs
@@ -740,31 +742,16 @@ def main():
         Szz.append(SZZ)
 
         # Extract various components of diagonal shielding tensor in PAS
-        sigma_dia, sigma_para, sigma_tot = extract_csa_tensor_in_pas(orca_output_splitted)
+        sigma_dia, sigma_para, sigma_tot, nuclear_identities_2 = extract_csa_tensor_in_pas(orca_output_splitted)
 
         # Append PAS diagonal tensors components to respective variables
         S_dia.append(sigma_dia)
         S_para.append(sigma_para)
         S_tot.append(sigma_tot)
+ 
 
 
     # ----------------- PLOTS SECTION ---------------- #
-    # Calculate MAX/MIN for the values of the isotropic shifts
-    #sigma_iso_max = max(Siso)
-    #sigma_iso_min = min(Siso)
-    #print(sigma_iso_max)
-    #print(sigma_iso_min)
-    #nucleus_label = 'Nucleus 9 F'
-    #delta_sigma = sigma_iso_max[0] - sigma_iso_min[0]
-
-    # Plot the max min values of the isotropic shift
-    #plt.figure(1)
-    #plt.scatter([0, 0], [sigma_iso_min, sigma_iso_max], color='blue', label= r'$\Delta$$\delta$ is:' + str(delta_sigma))
-    #plt.plot([0, 0], [sigma_iso_min, sigma_iso_max], color='blue', linestyle='-', linewidth=2)
-    #plt.xlabel(nucleus_label)
-    #plt.ylabel('Shift / ppm')
-    #plt.legend(loc='best')
-    #plt.show()
 
     # Create a folder to save the shifts plots as PDFs and JPEG if it doesn't exist
     shifts_figures_folder = 'shifts_plots'
@@ -818,38 +805,54 @@ def main():
     os.makedirs(pas_tensors_figures_folder, exist_ok=True)
 
     # Plot the shielding parameters for each nucleus
-    for nucleus_key in nuclear_identities:
-        # Extract shielding values for the current nucleus from each dictionary
-        nucleus_values_S_dia = [d.get(nucleus_key, [])[0] for d in S_dia]
-        nucleus_values_S_para = [d.get(nucleus_key, [])[0] for d in S_para]
-        nucleus_values_S_tot = [d.get(nucleus_key, [])[0] for d in S_tot]
+    for nucleus_key_2 in nuclear_identities_2:
+        # Extract individual contributions to shielding values for the current nucleus from each dictionary
+        nucleus_values_S_dia = [d.get(nucleus_key_2, [])[0] for d in S_dia]
+        nucleus_values_S_para = [d.get(nucleus_key_2, [])[0] for d in S_para]
+        nucleus_values_S_tot = [d.get(nucleus_key_2, [])[0] for d in S_tot]
 
         # Split the nucleus_key into a tuple (nucleus number, element)
-        nucleus = tuple(nucleus_key.split())
+        nucleus_2 = tuple(nucleus_key_2.split())
+
+        # Extract 11, 22 and 33 components of the tensor for each contribution
+        S_dia_11 = []
+        S_dia_22 = []
+        S_dia_33 = []
+
+        S_para_11 = []
+        S_para_22 = []
+        S_para_33 = []
+
+        S_tot_11 = []
+        S_tot_22 = []
+        S_tot_33 = []
+
+        # Loop through dict
+        # for nucleus in directory, for tensor component in nucleus append
 
         # Plot the shielding values for the current nucleus
-        plt.plot(displacement_steps_distance, nucleus_values_S_dia, marker='o', linestyle='-', color='darkblue', label=r'$\sigma$_xx')
-        plt.plot(displacement_steps_distance, nucleus_values_S_para, marker='o', linestyle='-', color='orangered', label=r'$\sigma$_yy')
-        plt.plot(displacement_steps_distance, nucleus_values_S_tot, marker='o', linestyle='-', color='gold', label=r'$\sigma$_zz')
+        plt.plot(displacement_steps_distance, nucleus_values_S_dia, marker='o', linestyle='-', color='darkblue', label=r'$\sigma$_dia_11')
+        plt.plot(displacement_steps_distance, nucleus_values_S_para, marker='o', linestyle='-', color='orangered', label=r'$\sigma$_para_11')
+        plt.plot(displacement_steps_distance, nucleus_values_S_tot, marker='o', linestyle='-', color='gold', label=r'$\sigma$_tot_11')
         plt.plot(displacement_steps_distance, nucleus_values_Siso, marker='*', linestyle='-', color='magenta', label=r'$\sigma$_iso')
 
         # Highlight the NONCOV effective region
-        plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
+        #plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
         
         # Set labels and title
         plt.xlabel('Displacement from initial geometry / Å')
         plt.ylabel('Shielding / ppm')
-        plt.title(f'Nucleus {nucleus[1]} {nucleus[2]}')
+        plt.title(f'Nucleus {nucleus_2[1]} {nucleus_2[2]}')
         
         # Display legend
         plt.legend(loc='best')
         
         # Save the plot as a PDF in the output folder
-        pdf_filename = os.path.join(shifts_figures_folder, f'nucleus_{nucleus[1]}_{nucleus[2]}.pdf')
+        pdf_filename = os.path.join(pas_tensors_figures_folder, f'nucleus_{nucleus_2[1]}.pdf')
         plt.savefig(pdf_filename, bbox_inches='tight')
 
         # Save the plot as a jpeg in the output folder
-        jpg_filename = os.path.join(shifts_figures_folder, f'nucleus_{nucleus[1]}_{nucleus[2]}.jpg')
+        jpg_filename = os.path.join(pas_tensors_figures_folder, f'nucleus_{nucleus_2[1]}.jpg')
         plt.savefig(jpg_filename, bbox_inches='tight')
         
         # Show the plot (optional, can be commented out if you don't want to display the plots)
