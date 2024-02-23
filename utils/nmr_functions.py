@@ -40,37 +40,53 @@ class NMRFunc:
                             [szx, szy, szz]]
                             )
         
-        print(f'Shielding Tensor is: {matrix}')
-        print('Proceeding to diagonalization..')
+        print(f'Shielding Tensor is: \n{matrix}')
+        print('Proceeding to transposing..\n')
 
         # Transpose matrix
         transposed = np.transpose(matrix)
-        print(f'Transposed matrix is: {transposed}')
-        print('Proceeding to symmetrization..')
+        print(f'Transposed matrix is: \n{transposed}')
+        print('Proceeding to symmetrization..\n')
 
         # Symmetrize the matrix
         symmetrized = np.array((matrix+transposed)/2)
-        print(f'Symmetrized matrix is: {symmetrized}')
-        print('Proceeding to diagonalization..')
+        print(f'Symmetrized matrix is: \n{symmetrized}')
+        print('Proceeding to diagonalization..\n')
 
         # Calculate eigenvalues and vectors, take absolute value of eigenvalues 
         eigenvals, eigenvecs = np.linalg.eig(symmetrized)
-        absolute_eigenvals = np.absolute(eigenvals)
-        absolute_eigenvals_S = np.power(absolute_eigenvals,2)
-        print(f'Eigenvalues are: {eigenvals}, Eigenvectors are: {eigenvecs}')
-        print('Proceeding to extract diagonal components, writing to diagonalized matrix..')
+        eigenvals = eigenvals.round(5) # round them up
+        eigenvecs = eigenvecs.round(5) # round them up
+        print(f'Eigenvalues are: {eigenvals}, Eigenvectors are: \n{eigenvecs}')
+        print('Proceeding to ordering eigenvalues and eigenvectors...\n')
+
+        # Sort eigenvalues and eigenvectors based on magnitude of eigenvalues
+        idx = np.argsort(np.abs(eigenvals))
+        eigenvals = eigenvals[idx]
+        eigenvecs = eigenvecs[:, idx]
+        print(f'Ordered eigenvalues are: {eigenvals}, ordered eigenvectors are: \n{eigenvecs}.')
+        print('Proceeding to diagonalization...\n')
 
         #Compute diagonal matrix, define eigenvector columns as variables and preforme matrix multiplication 
-        diagonal = (np.diag(absolute_eigenvals_S)).round(5)
-        a = eigenvecs[:, 0].round(5)
-        b = eigenvecs[:, 1].round(5)
-        c = eigenvecs[:, 2].round(5)
-        m_vecs = np.vstack((a,b,c)).round(5)
-        m_vecsT=np.transpose(m_vecs).round(5)
-        diagonalized_matrix = m_vecsT.dot(diagonal).dot(m_vecs).round(5)
+        diagonal = np.diag(eigenvals)
+        print(f'Diagonalized matrix is: \n{diagonal}')
+        print('Proceeding to compute isotropic shift...\n')
+
+        # Compute isotropic shift
+        s_iso = np.sum(np.diag(diagonal)) / 3
+        print(f'Isotropic shift is: {s_iso}')
+        print('Proceeding to Haberlen ordering...\n')
+
+        # Reorder matrix according to Haberlen convention
+        diagonal_haberlen = np.argsort(np.abs(np.diag(diagonal) - s_iso))
+        diagonal_haberlen = np.diag(np.diag(diagonal)[diagonal_haberlen])
+        print(f'Diagonal matrix in Habelen order is: \n{diagonal_haberlen}')
+
+        # Reorder matrix according to Mehring convention
 
 
-        return symmetrized, diagonalized_matrix
+
+        return diagonal, diagonal_haberlen
 
 
 
@@ -91,5 +107,4 @@ if __name__ == "__main__":
     h = 8
     i = 9
     sym, diag = nmr_utils.diagonalize_matrix(a,b,c,d,e,f,g,h,i)
-    print(diag)
 
