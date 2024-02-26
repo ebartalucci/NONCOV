@@ -22,7 +22,7 @@ class GenerateMLDataset:
         print("          |         (NC)^2I.py: NMR Calculations          |")
         print("          |         for Noncovalent Interactions          |")
         print("          | --------------------------------------------- |")
-        print("          |                WORKFLOW STEP 6                |")
+        print("          |        CALLING CLASS: GenerateMLDataset       |")
         print("          |                       -                       |")
         print("          |              MAKE DATASET TABLES              |")
         print("          |                                               |")
@@ -69,7 +69,7 @@ class GenerateMLDataset:
         self.df = pd.DataFrame(columns=self.columns)
 
         # Keep the user happy by saying that something happened
-        print(f'The dataset has been created and saved in: {self.output_csv_path}')
+        print(f'The empty dataset has been created and saved in: {self.output_csv_path}')
         print('\n')
 
     # Extract features from splitted orca output files
@@ -80,10 +80,22 @@ class GenerateMLDataset:
         :param file_path: output file from orca in the form .out
 
         Output
+        :molecule
+        :atom
+        :noncov
+        :x_coord
+        :y_coord
+        :z_coord
+        :tot_shielding
+        :dia_shielding
+        :para_shielding
+        :iso_shift
         :nmr_functional
         :nmr_basis_set
+        :aromatic
         """
         # Define empty feature variables to extract and append to dataset
+        # All shielding tensors are diagonalized in PAS before append to database
         molecule = []
         atom = []
         noncov = []
@@ -108,27 +120,96 @@ class GenerateMLDataset:
             with open(file_path, 'r') as f:
                 lines = f.readlines()
                 
-                # Get molecule info from input orca file, the flag is in the commented section as $Molecule:
-
-                # Get atom and relative coordinates info from file
+                # Search markers
                 coordinates_found = False
+                nucleus_found = False
+                shielding_found = False
+                nucleus_info = None
+
                 for line in lines:
-                    if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
+                    # @UserStaticInputs
+                    # Get molecular information from the user-defined Molecule flag in the input file
+                    if '# Molecule:' in line:
+                        molecule.append(line.split(':')[-1].strip())
+                    
+                    # Get Noncov type information from the user-defined Noncov flag in the input file
+                    elif '# Noncov:' in line:
+                        noncov.append(line.split(':')[-1].strip())
+                    
+                    # Get aromatic information from the user-defined Aromatic flag in the input file
+                    elif '# Aromatic:' in line:
+                        noncov.append(line.split(':')[-1].strip()) # as binary 1 or 0
+
+                    # To check, maybe get these info from shielding files?
+                    # Get atom and relative coordinates info from file
+                    elif 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
                         coordinates_found = True
                     elif coordinates_found and line.strip():
                         atomic_info = line.split()
-                        atom = atomic_info[0]
-                        x_coord = float(atomic_info[1])
-                        y_coord = float(atomic_info[2])
-                        z_coord = float(atomic_info[3])
-                        print(f'{atom}, {x_coord}')
-                    elif coordinates_found and not line.strip():
+                        atom.append(atomic_info[0])
+                        x_coord.append(float(atomic_info[1]))
+                        y_coord.append(float(atomic_info[2]))
+                        z_coord.append(float(atomic_info[3]))
+                    
+                    # Get the total, diamagnetic and paramagnetic tensors and diagonalize them
+                    elif 'CHEMICAL SHIFTS' in line:
+                        shielding_found = True
+                        continue
+                    
+                    if shielding_found:
+                        line = line.strip()
+
+                        # Empty dummy tensor matrices
+                        sigma_dia = []
+                        sigma_para = []
+                        sigma_tot = []
+
+                        if line.startswith('Nucleus'):
+                            if nucleus_found is not None:
+                                sigma_dia.append(current_dia_shielding)
+                                sigma_para.append(current_para_shielding)
+                                sigma_tot.append(current_tot_shielding)
+                            
+                            # add the nucleus information to file
+                            nucleus_info = line.split()[1:]
+                            nucleus_found = f"Nucleus {' '.join(nucleus_info)}"
+                            current_dia_shielding = []
+                            current_para_shielding = []
+                            current_tot_shielding = []
+
+                        # Extract the various tensor components here
+                        elif line.startswith('Diamagnetic contribution to the shielding tensor (ppm) :'):
+                            try:
+                                dia_tensor_components = [float(x) for x in line.split()[1:4]]
+                                current_dia_shielding.append(dia_tensor_components)
+                            except (ValueError, IndexError):
+                                continue
+
+                        elif line.startswith('Paramagnetic contribution to the shielding tensor (ppm):'):
+                            try:
+                                para_tensor_components = [float(x) for x in line.split()[1:4]]
+                                current_para_shielding.append(para_tensor_components)
+                            except (ValueError, IndexError):
+                                continue
+
+                        elif line.startswith('Total shielding tensor (ppm):'):
+                            try:
+                                tot_tensor_components = [float(x) for x in line.split()[1:4]]
+                                current_tot_shielding.append(tot_tensor_components)
+                            except (ValueError, IndexError):
+                                continue
+                    
+                    # stop extraction at the end of the tensor nmr block of the output
+                    if 'CHEMICAL SHIELDING SUMMARY (ppm)' in line:    
+                        # Store last nucleus data
+                        if nucleus_found is not None:
+                            sigma_dia.append(current_dia_shielding)
+                            sigma_para.append(current_para_shielding)
+                            sigma_tot.append(current_tot_shielding)
                         break
-                
-
-
-                # Get functional and basis set for NMR calculations
-                # Search for the line containing "# Level of theory"
+                        
+               
+                # Get functional and basis set for NMR calculations from the line containing the Level of theory flag
                 for i, line in enumerate(lines):
                     if "# Level of theory" in line:
                         # Extract the line immediately after it, this wont work if ppl dont use my syntax
@@ -144,15 +225,13 @@ class GenerateMLDataset:
                         nmr_basis_set = level_of_theory[1]
                         print(f'Basis set for NMR calculations is: {nmr_basis_set}\n')
 
-                        return nmr_functional, nmr_basis_set
-                    
-                    else: # if no level of theory found avoid crash by feeding empty list to the database
-                        print('No level of theory information has been found in file. Please check the input data.')
         
         except FileNotFoundError:
             return f"File '{file_path}' not found."
         except Exception as e:
             return f"An error occurred: {str(e)}"
+        
+        return molecule, atom, noncov, x_coord, y_coord, z_coord, tot_shielding_11, tot_shielding_22, tot_shielding_33, dia_shielding_11, dia_shielding_22, dia_shielding_33, para_shielding_11, para_shielding_22, para_shielding_33, iso_shift, nmr_functional, nmr_basis_set, aromatic
 
 
     # Search for all the splitted output files from an ORCA calculation in the Machine learning project root directory
