@@ -3,14 +3,14 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 15.02.2024                 #
-#               Last:  23.02.2024                 #
+#               Last:  26.02.2024                 #
 #               -----------------                 #
 ###################################################
 
 import pandas as pd
 import os
 import sys
-from utils.nmr_functions import NMRFunc
+#from utils.nmr_functions import NMRFunctions
 
 class GenerateMLDataset:
     
@@ -33,7 +33,7 @@ class GenerateMLDataset:
         print("          #################################################\n")
         
         # Print versions
-        version = '0.0.1'
+        version = '0.0.2'
         print("Stable version: {}\n\n".format(version))
         print("Working python version:")
         print(sys.version)
@@ -83,13 +83,49 @@ class GenerateMLDataset:
         :nmr_functional
         :nmr_basis_set
         """
+        # Define empty feature variables to extract and append to dataset
+        molecule = []
+        atom = []
+        noncov = []
+        x_coord = []
+        y_coord = []
+        z_coord = []
+        tot_shielding_11 = []
+        tot_shielding_22 = []
+        tot_shielding_33 = []
+        dia_shielding_11 = []
+        dia_shielding_22 = []
+        dia_shielding_33 = []
+        para_shielding_11 = []
+        para_shielding_22 = []
+        para_shielding_33 = []
+        iso_shift = []
+        nmr_functional = []
+        nmr_basis_set = []
+        aromatic = []
+
         try:
             with open(file_path, 'r') as f:
                 lines = f.readlines()
                 
-                # Get atom info from file
+                # Get molecule info from input orca file, the flag is in the commented section as $Molecule:
+
+                # Get atom and relative coordinates info from file
+                coordinates_found = False
                 for line in lines:
-                    if  
+                    if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
+                        coordinates_found = True
+                    elif coordinates_found and line.strip():
+                        atomic_info = line.split()
+                        atom = atomic_info[0]
+                        x_coord = float(atomic_info[1])
+                        y_coord = float(atomic_info[2])
+                        z_coord = float(atomic_info[3])
+                        print(f'{atom}, {x_coord}')
+                    elif coordinates_found and not line.strip():
+                        break
+                
+
 
                 # Get functional and basis set for NMR calculations
                 # Search for the line containing "# Level of theory"
@@ -111,19 +147,12 @@ class GenerateMLDataset:
                         return nmr_functional, nmr_basis_set
                     
                     else: # if no level of theory found avoid crash by feeding empty list to the database
-                        nmr_functional = []
-                        nmr_basis_set = []
                         print('No level of theory information has been found in file. Please check the input data.')
         
         except FileNotFoundError:
             return f"File '{file_path}' not found."
         except Exception as e:
             return f"An error occurred: {str(e)}"
-
-
-
-
-
 
 
     # Search for all the splitted output files from an ORCA calculation in the Machine learning project root directory
@@ -136,16 +165,17 @@ class GenerateMLDataset:
                     file_path = os.path.join(root, file)
 
                     # extract the required data from each file, this will be your instance vector nu_instance
-                    #instance_data = self.extract_data_for_ml_database(file_path)
+                    instance_data = self.extract_data_for_ml_database(file_path)
                     
                     # Add the extracted data to the DataFrame
-                    #self.df = self.df.append(instance_data, ignore_index=True)
+                    self.df = self.df.append(instance_data, ignore_index=True)
 
                     # Write to CSV file (check if maybe another format is better, no excel since its propertary)
                     self.df.to_csv(self.output_csv_path, index=False)
                 
                 # Raise error if no data in folder
                 else:
+                    
                     print('No raw data has been found in root with the following characteristics: startswith: splitted_, endswith: .out. Please adjust your search options.')
 
 
