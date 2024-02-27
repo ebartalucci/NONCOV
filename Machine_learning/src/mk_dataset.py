@@ -3,14 +3,16 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 15.02.2024                 #
-#               Last:  26.02.2024                 #
+#               Last:  27.02.2024                 #
 #               -----------------                 #
 ###################################################
 
 import pandas as pd
 import os
 import sys
-#from utils.nmr_functions import NMRFunctions
+
+sys.path.append(r'D:\PhD\Data\DFT\NONCOV\DFT_simulations\codes')
+from utils.nmr_functions import NMRFunctions
 
 class GenerateMLDataset:
     
@@ -33,7 +35,7 @@ class GenerateMLDataset:
         print("          #################################################\n")
         
         # Print versions
-        version = '0.0.2'
+        version = '0.0.3'
         print("Stable version: {}\n\n".format(version))
         print("Working python version:")
         print(sys.version)
@@ -79,7 +81,7 @@ class GenerateMLDataset:
         Input
         :param file_path: output file from orca in the form .out
 
-        Output
+        Output: data dictionary containing
         :molecule
         :atom
         :noncov
@@ -95,26 +97,29 @@ class GenerateMLDataset:
         :aromatic
         """
         # Define empty feature variables to extract and append to dataset
-        # All shielding tensors are diagonalized in PAS before append to database
-        molecule = []
-        atom = []
-        noncov = []
-        x_coord = []
-        y_coord = []
-        z_coord = []
-        tot_shielding_11 = []
-        tot_shielding_22 = []
-        tot_shielding_33 = []
-        dia_shielding_11 = []
-        dia_shielding_22 = []
-        dia_shielding_33 = []
-        para_shielding_11 = []
-        para_shielding_22 = []
-        para_shielding_33 = []
-        iso_shift = []
-        nmr_functional = []
-        nmr_basis_set = []
-        aromatic = []
+        # All shielding tensors are diagonalized in PAS and ordered in the Mehring way before being appended to database
+        data = {
+            'molecule': [],
+            'atom': [],
+            'noncov': [],
+            'x_coord': [],
+            'y_coord': [],
+            'z_coord': [],
+            'tot_shielding_11': [],
+            'tot_shielding_22': [],
+            'tot_shielding_33': [],
+            'dia_shielding_11': [],
+            'dia_shielding_22': [],
+            'dia_shielding_33': [],
+            'para_shielding_11': [],
+            'para_shielding_22': [],
+            'para_shielding_33': [],
+            'iso_shift': [],
+            'nmr_functional': [],
+            'nmr_basis_set': [],
+            'aromatic': []
+        }
+
 
         try:
             with open(file_path, 'r') as f:
@@ -122,34 +127,44 @@ class GenerateMLDataset:
                 
                 # Search markers
                 coordinates_found = False
-                nucleus_found = False
                 shielding_found = False
-                nucleus_info = None
+                molecule_found = False
+                noncov_found = False
+                aromatic_found = False
+
+                current_dia_shielding = []
+                current_para_shielding = []
+                current_tot_shielding = []
 
                 for line in lines:
                     # @UserStaticInputs
                     # Get molecular information from the user-defined Molecule flag in the input file
                     if '# Molecule:' in line:
-                        molecule.append(line.split(':')[-1].strip())
+                        molecule_found = True
+                        data['molecule'].append(line.split(':')[-1].strip())
                     
                     # Get Noncov type information from the user-defined Noncov flag in the input file
                     elif '# Noncov:' in line:
-                        noncov.append(line.split(':')[-1].strip())
+                        noncov_found = True
+                        data['noncov'].append(line.split(':')[-1].strip())
                     
                     # Get aromatic information from the user-defined Aromatic flag in the input file
                     elif '# Aromatic:' in line:
-                        noncov.append(line.split(':')[-1].strip()) # as binary 1 or 0
+                        aromatic_found = True
+                        data['aromatic'].append(line.split(':')[-1].strip()) # as binary 1 or 0
 
                     # To check, maybe get these info from shielding files?
                     # Get atom and relative coordinates info from file
                     elif 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
                         coordinates_found = True
+                    
+                    # add a linethat add numbers to nuclei to match
                     elif coordinates_found and line.strip():
                         atomic_info = line.split()
-                        atom.append(atomic_info[0])
-                        x_coord.append(float(atomic_info[1]))
-                        y_coord.append(float(atomic_info[2]))
-                        z_coord.append(float(atomic_info[3]))
+                        data['atom'].append(atomic_info[0])
+                        data['x_coord'].append(float(atomic_info[1]))
+                        data['y_coord'].append(float(atomic_info[2]))
+                        data['z_coord'].append(float(atomic_info[3]))
                     
                     # Get the total, diamagnetic and paramagnetic tensors and diagonalize them
                     elif 'CHEMICAL SHIFTS' in line:
@@ -159,26 +174,7 @@ class GenerateMLDataset:
                     if shielding_found:
                         line = line.strip()
 
-                        # Empty dummy tensor matrices
-                        sigma_dia = []
-                        sigma_para = []
-                        sigma_tot = []
-
-                        if line.startswith('Nucleus'):
-                            if nucleus_found is not None:
-                                sigma_dia.append(current_dia_shielding)
-                                sigma_para.append(current_para_shielding)
-                                sigma_tot.append(current_tot_shielding)
-                            
-                            # add the nucleus information to file
-                            nucleus_info = line.split()[1:]
-                            nucleus_found = f"Nucleus {' '.join(nucleus_info)}"
-                            current_dia_shielding = []
-                            current_para_shielding = []
-                            current_tot_shielding = []
-
-                        # Extract the various tensor components here
-                        elif line.startswith('Diamagnetic contribution to the shielding tensor (ppm) :'):
+                        if line.startswith('Diamagnetic contribution to the shielding tensor (ppm) :'):
                             try:
                                 dia_tensor_components = [float(x) for x in line.split()[1:4]]
                                 current_dia_shielding.append(dia_tensor_components)
@@ -198,16 +194,18 @@ class GenerateMLDataset:
                                 current_tot_shielding.append(tot_tensor_components)
                             except (ValueError, IndexError):
                                 continue
-                    
-                    # stop extraction at the end of the tensor nmr block of the output
-                    if 'CHEMICAL SHIELDING SUMMARY (ppm)' in line:    
-                        # Store last nucleus data
-                        if nucleus_found is not None:
-                            sigma_dia.append(current_dia_shielding)
-                            sigma_para.append(current_para_shielding)
-                            sigma_tot.append(current_tot_shielding)
-                        break
-                        
+
+                # Diagonalize the tensors
+                if current_dia_shielding:
+                    data['dia_shielding_11'], data['dia_shielding_22'], data['dia_shielding_33'] = NMRFunctions.diagonalize_tensor(
+                        *current_dia_shielding)
+                if current_para_shielding:
+                    data['para_shielding_11'], data['para_shielding_22'], data['para_shielding_33'] = NMRFunctions.diagonalize_tensor(
+                        *current_para_shielding)
+                if current_tot_shielding:
+                    data['tot_shielding_11'], data['tot_shielding_22'], data['tot_shielding_33'] = NMRFunctions.diagonalize_tensor(
+                        *current_tot_shielding)
+                            
                
                 # Get functional and basis set for NMR calculations from the line containing the Level of theory flag
                 for i, line in enumerate(lines):
@@ -220,18 +218,20 @@ class GenerateMLDataset:
                         level_of_theory = level_of_theory.split()
 
                         # Extract functional and basis set
-                        nmr_functional = level_of_theory[0]
-                        print(f'Functional for NMR calculations is: {nmr_functional}\n')
-                        nmr_basis_set = level_of_theory[1]
-                        print(f'Basis set for NMR calculations is: {nmr_basis_set}\n')
-
-        
+                        data['nmr_functional'] = level_of_theory[0]
+                        data['nmr_basis_set'] = level_of_theory[1]
+                
+                if not molecule_found and not noncov_found and not aromatic_found:
+                    data['molecule'] = [0]
+                    data['noncov'] = [0]  
+                    data['aromatic'] = [0] 
+                    
         except FileNotFoundError:
             return f"File '{file_path}' not found."
         except Exception as e:
             return f"An error occurred: {str(e)}"
         
-        return molecule, atom, noncov, x_coord, y_coord, z_coord, tot_shielding_11, tot_shielding_22, tot_shielding_33, dia_shielding_11, dia_shielding_22, dia_shielding_33, para_shielding_11, para_shielding_22, para_shielding_33, iso_shift, nmr_functional, nmr_basis_set, aromatic
+        return data
 
 
     # Search for all the splitted output files from an ORCA calculation in the Machine learning project root directory
@@ -243,20 +243,23 @@ class GenerateMLDataset:
                     # get the path to those files
                     file_path = os.path.join(root, file)
 
-                    # extract the required data from each file, this will be your instance vector nu_instance
                     instance_data = self.extract_data_for_ml_database(file_path)
                     
-                    # Add the extracted data to the DataFrame
-                    self.df = self.df.append(instance_data, ignore_index=True)
+                    # Check if the instance data is not empty (indicating an error)
+                    #if instance_data:
+                        # Construct DataFrame from the instance data dictionary
+                        #instance_df = pd.DataFrame(instance_data)
+                        
+                        # Append the DataFrame to the main DataFrame
+                        #self.df = self.df.append(instance_df, ignore_index=True)
+                        
+                        # Write to CSV file
+                        #self.df.to_csv(self.output_csv_path, index=False)
+                    #else:
+                        #print(f"No data extracted from file: {file_path}")
 
-                    # Write to CSV file (check if maybe another format is better, no excel since its propertary)
-                    self.df.to_csv(self.output_csv_path, index=False)
-                
-                # Raise error if no data in folder
-                else:
-                    
-                    print('No raw data has been found in root with the following characteristics: startswith: splitted_, endswith: .out. Please adjust your search options.')
-
+        if self.df.empty:
+            print("No raw data has been found matching the specified criteria.")
 
 
 

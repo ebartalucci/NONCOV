@@ -107,5 +107,22 @@ class NMRFunctions:
 
         print("# -------------------------------------------------- #")
 
+        return sigma_11, sigma_22, sigma_33
+    
+    @staticmethod
+    def active_rotations():
+        
+        rot_mat_A = np.matrix([[np.cos(a)*np.cos(b)*np.cos(g), sxy, sxz],
+                            [syx, syy, syz],
+                            [szx, szy, szz]]
+                            )
+        
+        rot_mat_A_inverted = np.matrix([[sxx, sxy, sxz],
+                            [syx, syy, syz],
+                            [szx, szy, szz]]
+                            )
 
-        return diagonal_mehring, sigma_11, sigma_22, sigma_33
+
+    @staticmethod
+    def ovaloid_tensorplot(sigma_11, sigma_22, sigma_33, x, y, z):
+
