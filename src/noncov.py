@@ -47,3 +47,8 @@ class NONCOVToolbox:
         print("Working python version:")
         print(sys.version)
         print('\n')
+
+
+
+        # ---------------------------------------------------------------------------- #
+        # BIOMOLECULAR APPLICATIONS: AMINO ACID STATISTICS

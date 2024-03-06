@@ -292,4 +292,15 @@ print(chisq)
 print(alpha)
 
 
+test_a = 0.86748
+test_b = 1.37967
+test_c = 0.497723
+testxx = 66.7652
+testyy = 43.6663
+testzz = -83.2183
+theta = 0
+phi = 2 * np.pi
+
+radius = NMRFunctions.radiusovaloid(testxx, testyy, testzz, test_a, test_b, test_c, theta, phi)
+ 
 
