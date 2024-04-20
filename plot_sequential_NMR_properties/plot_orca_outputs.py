@@ -441,7 +441,8 @@ def set_boundary_distance_values(user_choice):
 # -------------------------- start --------------------------------#
 # ----------------------------------------------------------------#
 # SECTION 9: EXTRACT INITIAL DISTANCE BETWEEN NUCLEAR PAIRS FOR DISTANCE PLOTS
-
+# compute the displacement as a difference between the coordinates of the first point and the
+# coordinates of the second point.
 # ----------------------------------------------------------------#
 
 # -------------------------- DONE --------------------------------#
