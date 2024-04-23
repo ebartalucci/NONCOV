@@ -248,7 +248,7 @@ start = timer() # this is not in [sec] i think
 def main():
 
     # Relative paths
-    start_structure = os.path.join(current_dir, 'input_structures/benzene_NH3_tail_geoopt_relax_H.xyz')
+    start_structure = os.path.join(current_dir, 'input_structures/KLaL_cation_pi_RCCE_opt_NICS.xyz')
     centroid_out = os.path.join(current_dir, 'centroid_output/centroid_file.xyz')
     input_file = os.path.join(current_dir, 'input_file/input_file.txt')
 
