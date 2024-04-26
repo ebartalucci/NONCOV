@@ -98,7 +98,7 @@ class AminoStat():
         plt.bar(amino_acids, percentages)
         plt.xlabel('Amino Acid')
         plt.ylabel('Percentage (%)')
-        plt.ylim(0, 20)  # Set the y-axis limit to 0% to 18%
+        #plt.ylim(0, 20)  # Set the y-axis limit to 0% to 18%
         plt.title('Amino Acids Distribution')
         
         for i in range(len(amino_acids)):
@@ -142,10 +142,10 @@ class AminoStat():
 # Example usage
 current_dir = os.getcwd()
 
-protein_sequence = os.path.join(current_dir, 'amino_acid_stats/fus_fl_human.txt')
-spaced_sequence = os.path.join(current_dir, 'amino_acid_stats/spaced_fus_fl_human.txt')
-count_file = os.path.join(current_dir, 'amino_acid_stats/amino_acid_count.txt')
-plot_file = os.path.join(current_dir, 'amino_acid_stats/amino_acid_statistics.png')
+protein_sequence = os.path.join(current_dir, 'amino_acid_stats/spidersilks.txt')
+spaced_sequence = os.path.join(current_dir, 'amino_acid_stats/spaced_spidersilks.txt')
+count_file = os.path.join(current_dir, 'amino_acid_stats/silks_amino_acid_count.txt')
+plot_file = os.path.join(current_dir, 'amino_acid_stats/silks_amino_acid_statistics.pdf')
 
 amino_stats = AminoStat()
 

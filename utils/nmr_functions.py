@@ -1,9 +1,9 @@
 ###################################################
-# COLLECTION OF FUNCTIONS FOR NMR TRANSFORMATIONS #
+#   COLLECTION OF FUNCTIONS FOR NMR APPLICATIONS  #
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 16.02.2024                 #
-#               Last:  03.03.2024                 #
+#               Last:  26.04.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.1.0                       #
@@ -39,7 +39,7 @@ class NMRFunctions:
     @staticmethod
     def diagonalize_tensor(sxx, sxy, sxz, syx, syy, syz, szx, szy, szz):
         """
-        Take NMR tensor as input and perform various operations, including diagonalization and ordering in Mehring and Haberlen formalisms.
+        Take NMR tensor elements as input and perform various operations, including diagonalization and ordering according to Mehring and Haberlen formalisms.
         Input
         :param sxx, sxy, sxz, syx, syy, syz, szx, szy, szz: individual tensor components for a 3x3 chemical shielding matrix
         Output
@@ -47,6 +47,11 @@ class NMRFunctions:
         :param sigma_11: individual component
         :param sigma_22: individual component
         :param sigma_33: individual component
+
+        :param diagonal_haberlen: full diagonalized matrix in principal axis system according to |sigma_yy - sigma_iso| < |sigma_xx - sigma_iso| < |sigma_zz - sigma_iso|
+        :param sigma_XX: individual component
+        :param sigma_YY: individual component
+        :param sigma_ZZ: individual component
         """
 
         # Notify user which module has been called
@@ -68,7 +73,7 @@ class NMRFunctions:
         print(f'Transposed matrix is: \n{transposed}')
         print('Proceeding to diagonalization...\n')
 
-        # Calculate eigenvalues and vectors, take absolute value of eigenvalues 
+        # Calculate eigenvalues and vectors 
         eigenvals, eigenvecs = np.linalg.eig(shielding_tensor)
         eigenvals = eigenvals.round(5) # round them up
         eigenvecs = eigenvecs.round(5) # round them up
@@ -94,13 +99,14 @@ class NMRFunctions:
         print('Proceeding to Haberlen ordering...\n')
 
         # Reorder matrix according to Haberlen convention
-        diagonal_haberlen = np.argsort(np.abs(np.diag(diagonal) - s_iso))
+        diagonal_haberlen = np.argsort(np.diag(diagonal) - s_iso)
         sigma_XX = diagonal_haberlen[0]
         sigma_YY = diagonal_haberlen[1]
         sigma_ZZ = diagonal_haberlen[2]
         diagonal_haberlen = np.diag(np.diag(diagonal)[diagonal_haberlen])
         print(f'Diagonal tensor in Haberlen order is: \n{diagonal_haberlen}\n')
         print(f'''where:\n \u03C3_XX:{sigma_XX} \n \u03C3_YY:{sigma_YY} \n \u03C3_ZZ:{sigma_ZZ}''')
+        print('Proceeding to Mehring ordering...\n')
 
         # Reorder matrix according to Mehring convention
         diagonal_mehring = sorted(np.diag(diagonal))
@@ -109,13 +115,13 @@ class NMRFunctions:
         sigma_33 = diagonal_mehring[2]
         diagonal_mehring = np.diag(diagonal_mehring)
         print(f'Diagonal tensor in Mehring order is: \n{diagonal_mehring}\n')
-        print(f'''where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33}''')
+        print(f'''where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33} \n''')
 
         print("# -------------------------------------------------- #")
 
         return shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33
     
-    # Right handed active rotation matrices for tensors alignment
+    # Right handed active rotation matrices
     @staticmethod
     def active_rh_rotation(diagonal_mehring, alpha, beta, gamma):
         '''
@@ -128,7 +134,7 @@ class NMRFunctions:
         '''
         # Notify user which module has been called
         print("# --------------------------------------------------- #")
-        print("# THE ACTIVE RIGHT HAND ROTATIONS HAVE BEEN REQUESTED #")
+        print("# THE ACTIVE RIGHT HAND ROTATION FUNCTIONS HAVE BEEN REQUESTED #")
         print(f'\n')
 
         # Rotation matrices
@@ -287,7 +293,7 @@ zz =56.277
 shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33 = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
 dev = NMRFunctions.dev_matrices(diagonal_mehring, shielding_tensor)
 
-chisq, alpha, beta, gamma = NMRFunctions.minimize_chisq(NMRFunctions.dev_matrices, NMRFunctions.active_rh_rotation, shielding_tensor)
+""" chisq, alpha, beta, gamma = NMRFunctions.minimize_chisq(NMRFunctions.dev_matrices, NMRFunctions.active_rh_rotation, shielding_tensor)
 print(chisq)
 print(alpha)
 
@@ -301,6 +307,6 @@ testzz = -83.2183
 theta = 0
 phi = 2 * np.pi
 
-radius = NMRFunctions.radiusovaloid(testxx, testyy, testzz, test_a, test_b, test_c, theta, phi)
+radius = NMRFunctions.radiusovaloid(testxx, testyy, testzz, test_a, test_b, test_c, theta, phi) """
  
 
