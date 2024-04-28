@@ -57,6 +57,13 @@ class NMRFunctions:
         # Notify user which module has been called
         print("# -------------------------------------------------- #")
         print("# MATRIX DIAGONALIZATION FUNCTION HAS BEEN REQUESTED #")
+        print("#    THE FOLLOWING OPERATIONS WILL BE PERFORMED:     #")
+        print("# - Symmetrization                                   #")
+        print("# - Diagonalization                                  #")
+        print("# - Eigenvals and eigenvecs ordering                 #")
+        print("# - Compute s_iso                                    #")
+        print("# - Haberlen and Mehring ordering                    #")
+        print("# - Extraction of Euler angles from R                #")
         print(f'\n')
                 
         # Initialize shielding tensor matrix
@@ -71,6 +78,11 @@ class NMRFunctions:
         # Transpose matrix
         transposed = np.transpose(shielding_tensor)
         print(f'Transposed matrix is: \n{transposed}')
+        print('Proceeding to symmetrization...\n')
+
+        # Symmetrize tensor
+        shielding_tensor = (shielding_tensor + transposed) / 2
+        print(f'Symmetric tensor is: \n{shielding_tensor}')
         print('Proceeding to diagonalization...\n')
 
         # Calculate eigenvalues and vectors 
@@ -84,7 +96,7 @@ class NMRFunctions:
         idx = np.argsort(np.abs(eigenvals))
         eigenvals_ordered = eigenvals[idx]
         eigenvecs_ordered = eigenvecs[:, idx]
-        print(f'Ordered eigenvalues are: {eigenvals_ordered}, ordered eigenvectors are: \n{eigenvecs_ordered}.')
+        print(f'Magnitude-based ordering of eigenvalues is: {eigenvals_ordered}, and of eigenvectors is: \n{eigenvecs_ordered}.')
         print('Proceeding to diagonalization...\n')
 
         # Compute diagonal matrix, define eigenvector columns as variables and preforme matrix multiplication 
@@ -103,7 +115,8 @@ class NMRFunctions:
         sigma_XX = diagonal_haberlen[0]
         sigma_YY = diagonal_haberlen[1]
         sigma_ZZ = diagonal_haberlen[2]
-        diagonal_haberlen = np.diag(np.diag(diagonal)[diagonal_haberlen])
+        diagonal_haberlen = diagonal[diagonal_haberlen]
+        # diagonal_haberlen = np.diag(np.diag(diagonal)[diagonal_haberlen])
         print(f'Diagonal tensor in Haberlen order is: \n{diagonal_haberlen}\n')
         print(f'''where:\n \u03C3_XX:{sigma_XX} \n \u03C3_YY:{sigma_YY} \n \u03C3_ZZ:{sigma_ZZ}''')
         print('Proceeding to Mehring ordering...\n')
@@ -116,16 +129,28 @@ class NMRFunctions:
         diagonal_mehring = np.diag(diagonal_mehring)
         print(f'Diagonal tensor in Mehring order is: \n{diagonal_mehring}\n')
         print(f'''where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33} \n''')
+        print('Proceeding to Euler angles extraction from eigenvectors...\n')
+        
+        # Backcalculate rotation matrices from eigenvectors assuming ZYZ Euler rotaiton matrix     
+        R_zyz_active = eigenvecs
+        R_33 = R_zyz_active[2,2] # cos(beta) variable
+        beta = np.degrees(np.arccos(R_33))
+        # now get alpha and gamma
+        if R_33 != 0:
+            sth
+            
+        else: # Apply Gimbal Lock
+
 
         print("# -------------------------------------------------- #")
 
-        return shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33
+        return shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33, eigenvecs
     
     # Right handed active rotation matrices
     @staticmethod
     def active_rh_rotation(diagonal_mehring, alpha, beta, gamma):
         '''
-        Perform a right handed active rotation using Euler angles as input values
+        Perform an active ZYZ right handed rotation using Euler angles as input values
         Input:
         Diagonal matrix elements in PAS
         Euler angles a, b, g
@@ -181,28 +206,7 @@ class NMRFunctions:
         print("# --------------------------------------------------- #")
 
         return rotated_diagonal_mehring, rotated_sigma_11, rotated_sigma_22, rotated_sigma_33
-    
-    # Define minimization method to find Euler angles as chisquare < 10e-10
-    @staticmethod
-    def dev_matrices(mat1, mat2):
-        '''
-        Calculate the chi-squared matrix between two matrices.
-        Input:
-        mat1: numpy array representing the expected matrix (original shielding tensor)
-        mat2: numpy array representing the observed matrix (PAS shielding tensor)
-        Output:
-        deviation between the matrices
-        '''
-        # Ensure matrices have the same shape
-        if mat1.shape != mat2.shape:
-            raise ValueError("Matrices must have the same shape.")
-                   
-        # Compute chi-square statistic
-        dev_matrices = np.sum((mat2 - mat1)**2)
-        print(f'Deviation between matirces is: {dev_matrices}')
-        
-        return dev_matrices
-    
+      
     # Define radius of Ovaloid for parametric plots
     @staticmethod
     def radiusovaloid(sxx, syy, szz, alpha, beta, gamma, theta, phi):
@@ -290,23 +294,8 @@ zx =-10.8928
 zy =-25.2372
 zz =56.277
 
-shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33 = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
-dev = NMRFunctions.dev_matrices(diagonal_mehring, shielding_tensor)
+shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33, eigenvectors = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
+print(eigenvectors)
 
-""" chisq, alpha, beta, gamma = NMRFunctions.minimize_chisq(NMRFunctions.dev_matrices, NMRFunctions.active_rh_rotation, shielding_tensor)
-print(chisq)
-print(alpha)
-
-
-test_a = 0.86748
-test_b = 1.37967
-test_c = 0.497723
-testxx = 66.7652
-testyy = 43.6663
-testzz = -83.2183
-theta = 0
-phi = 2 * np.pi
-
-radius = NMRFunctions.radiusovaloid(testxx, testyy, testzz, test_a, test_b, test_c, theta, phi) """
  
 
