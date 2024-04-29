@@ -142,10 +142,10 @@ class AminoStat():
 # Example usage
 current_dir = os.getcwd()
 
-protein_sequence = os.path.join(current_dir, 'amino_acid_stats/spidersilks.txt')
-spaced_sequence = os.path.join(current_dir, 'amino_acid_stats/spaced_spidersilks.txt')
-count_file = os.path.join(current_dir, 'amino_acid_stats/silks_amino_acid_count.txt')
-plot_file = os.path.join(current_dir, 'amino_acid_stats/silks_amino_acid_statistics.pdf')
+protein_sequence = os.path.join(current_dir, 'scratch/amino_acid_stats/spidersilks.txt')
+spaced_sequence = os.path.join(current_dir, 'scratch/amino_acid_stats/spaced_spidersilks.txt')
+count_file = os.path.join(current_dir, 'scratch/amino_acid_stats/silks_amino_acid_count.txt')
+plot_file = os.path.join(current_dir, 'scratch/amino_acid_stats/silks_amino_acid_statistics.pdf')
 
 amino_stats = AminoStat()
 

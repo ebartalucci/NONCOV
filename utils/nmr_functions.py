@@ -3,10 +3,10 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 16.02.2024                 #
-#               Last:  26.04.2024                 #
+#               Last:  29.04.2024                 #
 #               -----------------                 #
 #             Stable release version              #
-#                   v.0.1.0                       #
+#                   v.0.1.1                       #
 #                                                 #
 ###################################################
 
@@ -57,13 +57,6 @@ class NMRFunctions:
         # Notify user which module has been called
         print("# -------------------------------------------------- #")
         print("# MATRIX DIAGONALIZATION FUNCTION HAS BEEN REQUESTED #")
-        print("#    THE FOLLOWING OPERATIONS WILL BE PERFORMED:     #")
-        print("# - Symmetrization                                   #")
-        print("# - Diagonalization                                  #")
-        print("# - Eigenvals and eigenvecs ordering                 #")
-        print("# - Compute s_iso                                    #")
-        print("# - Haberlen and Mehring ordering                    #")
-        print("# - Extraction of Euler angles from R                #")
         print(f'\n')
                 
         # Initialize shielding tensor matrix
@@ -130,25 +123,88 @@ class NMRFunctions:
         print(f'Diagonal tensor in Mehring order is: \n{diagonal_mehring}\n')
         print(f'''where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33} \n''')
         print('Proceeding to Euler angles extraction from eigenvectors...\n')
-        
+
+        print("# -------------------------------------------------- #")
+
+        return shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvecs
+    
+    # Backcalculate Euler angles from eigenvector matrix
+    def tensor_to_euler(eigenvecs, mode, order):
+        """
+        Take eigenvectors from diagonalization step and back-infere Euler angles
+        Input
+        :param eigenvecs: 3x3 (rotation) matrix of eigenvectors
+        :param rotation_mode: Active_ZYZ, Passive_ZYZ, Active_ZXZ, Passive_ZXZ
+        :param order: order of elements sorting
+        Output
+        :param alpha
+        :param beta
+        :param gamma
+        """
+
+        # Notify user which module has been called
+        print("# -------------------------------------------------- #")
+        print("# EULER ANGLES CALCULATION MODULE HAS BEEN REQUESTED #")
+        print(f'\n')
+                
+        # Eigenvectors are the rotation matrix
+        R = eigenvecs
+
+        # Get Euler angles based on rotation mode
+        if mode == 'AZYZ':
+            beta = np.arccos(R[2,2]) # cos(beta) element
+
+            if R[2,2] == 1:
+                alpha = np.arccos(R[0,0])
+                gamma = 0
+                
+            else:
+                alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
+                gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
+            
+            if np.any(eigenvecs >= 0): # check if any eigenvector value is negative
+                pass
+            
+            else:
+                eigenvecs = - eigenvecs
+
+                beta = np.arccos(R[2,2]) # cos(beta) element
+
+                if R[2,2] == 1:
+                    alpha = np.arccos(R[0,0])
+                    gamma = 0
+                    
+                else:
+                    alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
+                    gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
+
+            if symmetry == 
+            
+
+
+
+
+
+
+
+
+
+
         # Backcalculate rotation matrices from eigenvectors assuming ZYZ Euler rotaiton matrix     
-        R_zyz_active = eigenvecs
-        R_33 = R_zyz_active[2,2] # cos(beta) variable
-        beta = np.degrees(np.arccos(R_33))
+
         # now get alpha and gamma
         if R_33 != 0:
             sth
             
         else: # Apply Gimbal Lock
+        
+        return alpha, beta, gamma
 
 
-        print("# -------------------------------------------------- #")
-
-        return shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33, eigenvecs
     
     # Right handed active rotation matrices
     @staticmethod
-    def active_rh_rotation(diagonal_mehring, alpha, beta, gamma):
+    def active_rh_rotation(self, diagonal_mehring, alpha, beta, gamma):
         '''
         Perform an active ZYZ right handed rotation using Euler angles as input values
         Input:
@@ -221,7 +277,7 @@ class NMRFunctions:
         
         return r_ov
     
-    # Generate sets of equivalent euler angles
+    # Generate sets of equivalent euler angles based on AZYZ, PZYZ, AZXZ, PZXZ conventions
     @staticmethod
     def EqEulerSet(alpha, beta, gamma):
         """
@@ -294,7 +350,7 @@ zx =-10.8928
 zy =-25.2372
 zz =56.277
 
-shielding_tensor, diagonal_mehring, sigma_11, sigma_22, sigma_33, eigenvectors = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
+shielding_tensor, diagonal_mehring, diagonal_hab, eigenvectors = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
 print(eigenvectors)
 
  

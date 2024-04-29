@@ -22,7 +22,7 @@ class TerminalWidget(QTextEdit):
         self.cursor = self.textCursor()
         self.insertPrompt()
 
-        # Terminal logs
+        # Terminal logs  
         self.log_file = open("gui/python/terminal_log.txt", "a")
 
         # Write the headline with date, time, and creator's name
