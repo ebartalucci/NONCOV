@@ -122,19 +122,24 @@ class NMRFunctions:
         diagonal_mehring = np.diag(diagonal_mehring)
         print(f'Diagonal tensor in Mehring order is: \n{diagonal_mehring}\n')
         print(f'''where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33} \n''')
+        print('Proceeding to extract tensor symmetry from eigenvalues...\n')
+
+        # Extract symmetry of the tensor from its eigenvalues
+        symmetry = len(eigenvals) - len(np.unique(np.round(eigenvals,7))) #check if here maybe i dont need the asymmetry parameter
+        print(f'Symmetry of the tensor is: {symmetry}\n')
         print('Proceeding to Euler angles extraction from eigenvectors...\n')
 
         print("# -------------------------------------------------- #")
 
-        return shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvecs
+        return shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
     
     # Backcalculate Euler angles from eigenvector matrix
-    def tensor_to_euler(eigenvecs, mode, order):
+    def tensor_to_euler(symmetric_tensor, eigenvals, eigenvecs, symmetry, rotation_mode, order): 
         """
         Take eigenvectors from diagonalization step and back-infere Euler angles
         Input
         :param eigenvecs: 3x3 (rotation) matrix of eigenvectors
-        :param rotation_mode: Active_ZYZ, Passive_ZYZ, Active_ZXZ, Passive_ZXZ
+        :param rotation_mode: AZYZ, PZYZ, AZXZ, PZXZ
         :param order: order of elements sorting
         Output
         :param alpha
@@ -149,9 +154,11 @@ class NMRFunctions:
                 
         # Eigenvectors are the rotation matrix
         R = eigenvecs
-
+        print(f'Rotation matrix is: \n{R}\n')
+        
         # Get Euler angles based on rotation mode
-        if mode == 'AZYZ':
+        if rotation_mode == 'AZYZ':
+            print('Active ZYZ right hand rotation requested')
             beta = np.arccos(R[2,2]) # cos(beta) element
 
             if R[2,2] == 1:
@@ -161,11 +168,20 @@ class NMRFunctions:
             else:
                 alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
                 gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
-            
-            if np.any(eigenvecs >= 0): # check if any eigenvector value is negative
+
+            # Check if Euler angle extraction worked by comparing the rotated tensor with the original one
+            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')   
+            original_molecular_tensor = eigenvecs * diagonal_mehring * np.linalg.inv(eigenvecs) 
+
+            print(f'Original molecular frame tensor is: \n{original_molecular_tensor}\n')
+
+            # Check if any eigenvector value is negative by comparing the two matrices
+            if np.array_equal(molecular_tensor, original_molecular_tensor):
                 pass
             
+            # fix the eigenvector matrix when different
             else:
+                print('Eigenvectors values are negative, proceeding to fix rotations.')
                 eigenvecs = - eigenvecs
 
                 beta = np.arccos(R[2,2]) # cos(beta) element
@@ -178,90 +194,148 @@ class NMRFunctions:
                     alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
                     gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
 
-            if symmetry == 
-            
+            if symmetry == 1: # spherical symmetry
+                alpha = 0
+                beta = 0
+                gamma = 0
 
+            if symmetry == 0: 
+                if np.round(eigenvals[2], 3) == np.round(eigenvals[1], 3):
+                    if np.round(symmetric_tensor[1,2], 3) ==0 and np.round(symmetric_tensor[0,1], 3) == 0:
+                        if np.abs(np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))) == np.pi/2:
+                            gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) - eigenvals[0] - eigenvals[1]))
+                            beta = 0
+                            alpha = 0
+                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ') 
+                        
+                            # Check if any eigenvector value is negative by comparing the two matrices
+                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                                pass
+                            else:
+                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = 0
+                                gamma = 0
 
+                        else:
+                            gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                            beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                            alpha = 0
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                                pass
+                            else:
+                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                                alpha = 0
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                                pass
+                            else:
+                                gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                                alpha = 0
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                                pass
+                            else:
+                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (v[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                                alpha = 0
 
+        # Get the angles in degrees and round up values
+        alpha = np.degrees(alpha).round(2)
+        beta = np.degrees(beta).round(2)
+        gamma = np.degrees(gamma).round(2)
 
+        print(f'Euler angles are: \n{alpha}, {beta}, {gamma}\n')
+        print("# -------------------------------------------------- #")
 
-
-
-
-
-
-        # Backcalculate rotation matrices from eigenvectors assuming ZYZ Euler rotaiton matrix     
-
-        # now get alpha and gamma
-        if R_33 != 0:
-            sth
-            
-        else: # Apply Gimbal Lock
-        
         return alpha, beta, gamma
-
-
+            
     
-    # Right handed active rotation matrices
-    @staticmethod
-    def active_rh_rotation(self, diagonal_mehring, alpha, beta, gamma):
+    # Define a rotation of a given tensor using Euler angles
+    def backrotate_diagonal_tensor_with_euler(diagonal_pas, alpha, beta, gamma, rotation_mode):
         '''
-        Perform an active ZYZ right handed rotation using Euler angles as input values
-        Input:
-        Diagonal matrix elements in PAS
-        Euler angles a, b, g
-        Output:
-        rotated_sigma_11, rotated_sigma_22, rotated_sigma_33
+        Take the diagonalized PAS tensor and rotate it back to its original form using Euler angles
+        Input
+        :param: diagonal_pas: 3x3 diagonal tensor in PAS
+        :param: alpha, beta, gamma: Euler angles calculated from the tensor_to_euler function
+        :param: rotation_mode: define either active or passive rotations and the axis
+        Output
+        :param: molecular_tensor: tensor rotated back to its molecular frame
         '''
-        # Notify user which module has been called
-        print("# --------------------------------------------------- #")
-        print("# THE ACTIVE RIGHT HAND ROTATION FUNCTIONS HAVE BEEN REQUESTED #")
-        print(f'\n')
 
-        # Rotation matrices
-        def R_x(angle):
-            R_x =  np.array([
-                            [1, 0, 0],
-                            [0, np.cos(angle), -np.sin(angle)],
-                            [0, np.sin(angle), np.cos(angle)]]
-                            )
-            return R_x
-    
-        def R_y(angle):
-            R_y =  np.array([
-                            [np.cos(angle), 0, np.sin(angle)],
-                            [0, 1, 0],
-                            [-np.sin(angle), 0, np.cos(angle)]]
-                            )
-            return R_y
-    
-        def R_z(angle):
-            R_z =  np.array([
-                            [np.cos(angle), -np.sin(angle), 0],
-                            [np.sin(angle), np.cos(angle), 0],
+        # Choose rotation modes ZYZ
+        if rotation_mode == 'AZYZ' or rotation_mode == 'PZYZ':
+            
+            R_z1 =  np.array([
+                            [np.cos(alpha), -np.sin(alpha), 0],
+                            [np.sin(alpha), np.cos(alpha), 0],
                             [0, 0, 1]]
                             )
-            return R_z
-        
-        # Rotate shielding tensor from initial PAS
-        rotated_diagonal_mehring = np.linalg.multi_dot([R_z(alpha), R_y(beta), R_z(gamma), 
-                                                        diagonal_mehring, 
-                                                        R_z(-gamma), R_y(-beta), R_z(-alpha)]
-                                                        )
-        
-        print(f'Perform active right hand rotation of the shielding tensor: \n{diagonal_mehring}\n')
-        print(f'''as:\n {R_z} {R_y} {R_z} {diagonal_mehring} -{R_z} -{R_y} -{R_z}''')
-        
-        # Get individual components
-        rotated_sigma_11 = rotated_diagonal_mehring[0]
-        rotated_sigma_22 = rotated_diagonal_mehring[1]
-        rotated_sigma_33 = rotated_diagonal_mehring[2]
-        print(f'Rotated diagonal tensor in Mehring order is: \n{rotated_diagonal_mehring}\n')
-        print(f'''where:\n rot_\u03C3_11:{rotated_sigma_11} \n rot_\u03C3_22:{rotated_sigma_22} \n rot_\u03C3_33:{rotated_sigma_33}''')
+            
+            R_y2 =  np.array([
+                            [np.cos(beta), 0, np.sin(beta)],
+                            [0, 1, 0],
+                            [-np.sin(beta), 0, np.cos(beta)]]
+                            )
 
-        print("# --------------------------------------------------- #")
+            R_z3 =  np.array([
+                            [np.cos(gamma), -np.sin(gamma), 0],
+                            [np.sin(gamma), np.cos(gamma), 0],
+                            [0, 0, 1]]
+                            )
+            
+            R_tot = R_z1 * R_y2 * R_z3
 
-        return rotated_diagonal_mehring, rotated_sigma_11, rotated_sigma_22, rotated_sigma_33
+            # invert if passive
+            if rotation_mode == 'PZYZ':
+                inv_R_z1 = np.linalg.inv(R_z1)
+                inv_R_y2 = np.linalg.inv(R_y2)
+                inv_R_z3 = np.linalg.inv(R_z3)
+
+                R_tot = inv_R_z1 *inv_R_y2 * inv_R_z3
+
+        # Choose rotation modes ZXZ
+        elif rotation_mode == 'AZXZ' or rotation_mode == 'PZXZ':
+
+            R_z1 =  np.array([
+                            [np.cos(alpha), -np.sin(alpha), 0],
+                            [np.sin(alpha), np.cos(alpha), 0],
+                            [0, 0, 1]]
+                            )
+            
+            R_x2 =  np.array([
+                            [1, 0, 0],
+                            [0, np.cos(beta), -np.sin(beta)],
+                            [0, np.sin(beta), np.cos(beta)]]
+                            )
+
+            R_z3 =  np.array([
+                            [np.cos(gamma), -np.sin(gamma), 0],
+                            [np.sin(gamma), np.cos(gamma), 0],
+                            [0, 0, 1]]
+                            )
+            
+            R_tot = R_z1 * R_x2 * R_z3
+
+            # invert if passive
+            if rotation_mode == 'PZXZ':
+                inv_R_z1 = np.linalg.inv(R_z1)
+                inv_R_x2 = np.linalg.inv(R_x2)
+                inv_R_z3 = np.linalg.inv(R_z3)
+                
+                R_tot = inv_R_z1 *inv_R_x2 * inv_R_z3
+        
+        else:
+            print('The input rotation mode is wrong, please choose one of the following formats: AZYZ, PZYZ, AZXZ, PZXZ')
+
+        backrotated_tensor = R_tot * diagonal_pas * np.linalg.inv(R_tot)
+
+        print(f'Backrotated molecular frame tensor is: \n{backrotated_tensor}\n')
+
+        return backrotated_tensor
+
       
     # Define radius of Ovaloid for parametric plots
     @staticmethod
@@ -296,46 +370,7 @@ class NMRFunctions:
         print(f'Equivalent Euler angles are: {euler_equivalents}')
 
         return euler_equivalents
-       
-    # Minimization through chisquare (<10e-10)
-    @staticmethod
-    def minimize_chisq(dev_matrices, active_rh_rotation, shielding_tensor):
-        """
-        Minimize the chi-squared function with Powell's method.
-        Input:
-        active_rh_rotation: function returning the rotated shielding tensor
-        shielding_tensor: the original initial shielding tensor
-        dev_matrices: function to compute the deviation between two matrices
-        alpha_start, alpha_end: bounds for Euler angle alpha
-        beta_start, beta_end: bounds for Euler angle beta
-        gamma_start, gamma_end: bounds for Euler angle gamma
-        Output:
-        chisq: the minimized chi-squared value
-        alpha, beta, gamma: the optimized values of parameters alpha, beta, and gamma
-        """
 
-        # Boundaries for Euler angles to avoid redundant orientations. 
-        # Gives postive projections of the PAS Y and Z axes on the molecular frame z axis
-        alpha_start = 0
-        alpha_end = 2 * np.pi
-        beta_start = 0
-        beta_end = np.pi / 2
-        gamma_start = 0
-        gamma_end = np.pi
-
-        # Define the objective function for minimization
-        def objective_function(angles):
-            # Rotate the shielding tensor using the given angles
-            rotated_diagonal_mehring, _, _, _ = active_rh_rotation(diagonal_mehring, *angles)
-            # Compute the deviation between the rotated tensor and the original tensor
-            deviation = dev_matrices(rotated_diagonal_mehring, shielding_tensor)
-            return deviation
-
-        # Minimize the objective function using Powell's method
-        result = minimize(objective_function, x0=[alpha_start, beta_start, gamma_start], bounds=[(alpha_start, alpha_end), (beta_start, beta_end), (gamma_start, gamma_end)], method="Powell")
-        chisq = result.fun
-        alpha, beta, gamma = result.x
-        return chisq, alpha, beta, gamma
         
 
 
@@ -350,8 +385,8 @@ zx =-10.8928
 zy =-25.2372
 zz =56.277
 
-shielding_tensor, diagonal_mehring, diagonal_hab, eigenvectors = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
-print(eigenvectors)
-
- 
+shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
+mode = 'AZYZ'
+order = 1
+alpha, beta, gamma = NMRFunctions.tensor_to_euler(shielding_tensor, eigenvals, eigenvecs, symmetry, 'AZYZ', order)
 
