@@ -134,13 +134,15 @@ class NMRFunctions:
         return shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
     
     # Backcalculate Euler angles from eigenvector matrix
-    def tensor_to_euler(symmetric_tensor, eigenvals, eigenvecs, symmetry, rotation_mode, order): 
+    def tensor_to_euler(symmetric_tensor, eigenvals, eigenvecs, symmetry, rotation_mode): 
         """
         Take eigenvectors from diagonalization step and back-infere Euler angles
         Input
+        :param symmetric_tensor: 3x3 original molecular frame tensor symmetrized
+        :param eigenvals: eigenvalues from diagonalized molecular frame tensor
         :param eigenvecs: 3x3 (rotation) matrix of eigenvectors
+        :param symmetry: symmetry parameter of the tensor
         :param rotation_mode: AZYZ, PZYZ, AZXZ, PZXZ
-        :param order: order of elements sorting
         Output
         :param alpha
         :param beta
@@ -173,10 +175,9 @@ class NMRFunctions:
             molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')   
             original_molecular_tensor = eigenvecs * diagonal_mehring * np.linalg.inv(eigenvecs) 
 
-            print(f'Original molecular frame tensor is: \n{original_molecular_tensor}\n')
-
             # Check if any eigenvector value is negative by comparing the two matrices
-            if np.array_equal(molecular_tensor, original_molecular_tensor):
+            if np.array_equal(np.round(molecular_tensor,3), np.round(original_molecular_tensor,3)):
+                print('Original molecular tensor and backrotated tensor are equal')
                 pass
             
             # fix the eigenvector matrix when different
@@ -186,31 +187,41 @@ class NMRFunctions:
 
                 beta = np.arccos(R[2,2]) # cos(beta) element
 
-                if R[2,2] == 1:
+                if R[2,2] == 1: # cos(beta) != 0
                     alpha = np.arccos(R[0,0])
                     gamma = 0
                     
-                else:
+                else: # gimbal lock
                     alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
                     gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
 
             if symmetry == 1: # spherical symmetry
+                print('The tensor has spherical symmetry, angles are all zero..')
                 alpha = 0
                 beta = 0
                 gamma = 0
 
             if symmetry == 0: 
+                print('The tensor doesnt have spherical symmetry, calculating angles..')
+                
                 if np.round(eigenvals[2], 3) == np.round(eigenvals[1], 3):
+
+                    print('The tensor is axially symmetric with yy = zz')
+
                     if np.round(symmetric_tensor[1,2], 3) ==0 and np.round(symmetric_tensor[0,1], 3) == 0:
+                        
                         if np.abs(np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))) == np.pi/2:
-                            gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) - eigenvals[0] - eigenvals[1]))
+                            
+                            gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
                             beta = 0
                             alpha = 0
+                            
                             molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ') 
                         
                             # Check if any eigenvector value is negative by comparing the two matrices
-                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
+                            
                             else:
                                 gamma = np.arcsin(-np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
                                 beta = 0
@@ -218,29 +229,202 @@ class NMRFunctions:
 
                         else:
                             gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                            beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                            beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                             alpha = 0
+                            
                             molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
-                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                            
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
+                            
                             else:
                                 gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                                beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                                beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
+                            
                             molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
-                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                            
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
+                            
                             else:
                                 gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
+                            
                             molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
-                            if np.array_equal(molecular_tensor, symmetric_tensor):
+                            
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
+                            
                             else:
                                 gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (v[1] - eigenvals[0]) * np.sin(gamma) ** 2)))
+                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
+                    
+                    else:
+                        gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                        beta = np.arctan2(-symmetric_tensor[1,2] / (np.sin(gamma) * np.cos(gamma) * (eigenvals[0] - eigenvals[1])), symmetric_tensor[0,1] / (np.sin(gamma) * np.cos(gamma) * (eigenvals[0] - eigenvals[1])))
+                        alpha = 0
+            
+            else:
+                gamma = 0
+        
+            alpha = np.mod(alpha, 2*np.pi)
+            beta = np.mod(beta, 2*np.pi)
+            gamma = np.mod(gamma, 2*np.pi)
+
+            if beta > np.pi:
+                alpha = alpha - np.pi
+                alpha = np.mod(alpha, 2*np.pi)
+                beta = 2*np.pi - beta
+            
+            if beta >= np.pi/2:
+                alpha = np.pi + alpha
+                alpha = np.mod(alpha, 2*np.pi)
+                beta = np.pi - beta
+                beta = np.mod(beta, 2*np.pi)
+                gamma = np.pi - gamma
+                gamma = np.mod(gamma, 2*np.pi)
+
+            if gamma >= np.pi:
+                gamma = gamma - np.pi
+            
+            print('Angles have been generated successfully with Active ZYZ roataion mode')
+
+        # Get Euler angles based on rotation mode
+        if rotation_mode == 'PZYZ':
+            print('Passive ZYZ right hand rotation requested')
+            beta = np.arccos(R[2,2]) # cos(beta) element
+
+            if R[2,2] == 1:
+                alpha = np.arccos(R[0,0])
+                gamma = 0
+                
+            else:
+                alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
+                gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
+
+            # Check if Euler angle extraction worked by comparing the rotated tensor with the original one
+            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')   
+            original_molecular_tensor = eigenvecs * diagonal_mehring * np.linalg.inv(eigenvecs) 
+
+            # Check if any eigenvector value is negative by comparing the two matrices
+            if np.array_equal(np.round(molecular_tensor,3), np.round(original_molecular_tensor,3)):
+                print('Original molecular tensor and backrotated tensor are equal')
+                pass
+            
+            # fix the eigenvector matrix when different
+            else:
+                print('Eigenvectors values are negative, proceeding to fix rotations.')
+                eigenvecs = - eigenvecs
+
+                beta = np.arccos(R[2,2]) # cos(beta) element
+
+                if R[2,2] == 1: # cos(beta) != 0
+                    alpha = np.arccos(R[0,0])
+                    gamma = 0
+                    
+                else: # gimbal lock
+                    alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
+                    gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
+
+            if symmetry == 1: # spherical symmetry
+                print('The tensor has spherical symmetry, angles are all zero..')
+                alpha = 0
+                beta = 0
+                gamma = 0
+
+            if symmetry == 0: 
+                print('The tensor doesnt have spherical symmetry, calculating angles..')
+                
+                if np.round(eigenvals[2], 3) == np.round(eigenvals[1], 3):
+
+                    print('The tensor is axially symmetric with yy = zz')
+
+                    if np.round(symmetric_tensor[1,2], 3) ==0 and np.round(symmetric_tensor[0,1], 3) == 0:
+                        
+                        if np.abs(np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))) == np.pi/2:
+                            
+                            gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                            beta = 0
+                            alpha = 0
+                            
+                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ') 
+                        
+                            # Check if any eigenvector value is negative by comparing the two matrices
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
+                                pass
+                            
+                            else:
+                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = 0
+                                gamma = 0
+
+                        else:
+                            gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                            beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
+                            alpha = 0
+                            
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
+                                pass
+                            
+                            else:
+                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
+                                alpha = 0
+                            
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
+                                pass
+                            
+                            else:
+                                gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
+                                alpha = 0
+                            
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            
+                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
+                                pass
+                            
+                            else:
+                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
+                                alpha = 0
+                    
+                    else:
+                        gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
+                        beta = np.arctan2(-symmetric_tensor[1,2] / (np.sin(gamma) * np.cos(gamma) * (eigenvals[0] - eigenvals[1])), symmetric_tensor[0,1] / (np.sin(gamma) * np.cos(gamma) * (eigenvals[0] - eigenvals[1])))
+                        alpha = 0
+            
+            else:
+                gamma = 0
+        
+            alpha = np.mod(alpha, 2*np.pi)
+            beta = np.mod(beta, 2*np.pi)
+            gamma = np.mod(gamma, 2*np.pi)
+
+            if beta > np.pi:
+                alpha = alpha - np.pi
+                alpha = np.mod(alpha, 2*np.pi)
+                beta = 2*np.pi - beta
+            
+            if beta >= np.pi/2:
+                alpha = np.pi + alpha
+                alpha = np.mod(alpha, 2*np.pi)
+                beta = np.pi - beta
+                beta = np.mod(beta, 2*np.pi)
+                gamma = np.pi - gamma
+                gamma = np.mod(gamma, 2*np.pi)
+
+            if gamma >= np.pi:
+                gamma = gamma - np.pi
+            
+            print('Angles have been generated successfully with Active ZYZ roataion mode')           
 
         # Get the angles in degrees and round up values
         alpha = np.degrees(alpha).round(2)
@@ -388,5 +572,5 @@ zz =56.277
 shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
 mode = 'AZYZ'
 order = 1
-alpha, beta, gamma = NMRFunctions.tensor_to_euler(shielding_tensor, eigenvals, eigenvecs, symmetry, 'AZYZ', order)
+alpha, beta, gamma = NMRFunctions.tensor_to_euler(shielding_tensor, eigenvals, eigenvecs, symmetry, 'AZYZ')
 
