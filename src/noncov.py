@@ -63,7 +63,7 @@ class NONCOVToolbox:
     # ------------------------------------------------------------------------------
     # BIOMOLECULAR APPLICATIONS 
     # ------------------------------------------------------------------------------
-    class AminoStat:
+    class AminoStat(NONCOVToolbox):
         """
         Collection of useful functions for working with proteins and sequences.
         """
@@ -84,6 +84,9 @@ class NONCOVToolbox:
             print("          #################################################\n")
 
         def space_prot_seq(self, prot_seq, spaced_prot_seq):
+            """
+            Take a sequence and add a space between each letter
+            """
             try:
                 with open(prot_seq, 'r') as f:
                     sequence = f.read()
@@ -94,7 +97,6 @@ class NONCOVToolbox:
                     f.write(spaced_sequence)
 
                 print(f'Protein sequence from Uniprot now contains spaces between each amino acid letter and has been written to: {spaced_prot_seq}.')
-                print('Continuing to next step...')
 
             except FileNotFoundError:
                 print('Input file not found, please specify')
@@ -102,6 +104,9 @@ class NONCOVToolbox:
                 print(f'An error occurred: {e}')
 
         def count_amino_acids(self, prot_seq, count_file):
+            """
+            Take spaced sequence and count how many of each amino acids you have
+            """
             try:
                 with open(prot_seq, 'r') as f:
                     sequence = f.read()
@@ -118,13 +123,16 @@ class NONCOVToolbox:
                         f.write(f"{amino_acid}: {count}\n")
 
                 print('Amino acid counts written to amino_acid_count.txt')
-                print('Continuing to next step...')
+
             except FileNotFoundError:
                 print('Input file not found. please specify')
             except Exception as e:
                 print(f'An error occurred: {e}')
 
         def plot_amino_acid_statistics(self, count_file, plot_file):
+            """
+            Take the count of the amino acids and plot the histogram of the distribution
+            """
             try:
                 amino_acid_counts = {}
                 total_count = 0
@@ -152,6 +160,7 @@ class NONCOVToolbox:
 
                 plt.savefig(plot_file)
                 plt.show()
+                
             except FileNotFoundError:
                 print('Count file not found. please specify')
             except Exception as e:
@@ -163,6 +172,10 @@ class NONCOVToolbox:
             return aa_percentage
 
         def define_protein_domains(self):
+            """
+            Users defines the limit and names of the domains of the protein
+            """
+            
             print('Please define your domains according to Uniprot information.')
             try:
                 n_domains = int(input('How many domains does your protein have? '))
@@ -180,11 +193,13 @@ class NONCOVToolbox:
                 print(f'The domains of your protein are: {prot_domain_names} in regions {prot_domain_boundaries}')
             except Exception as e:
                 print(f'An error occurred: {e}')
+                
+                # continue here with sequence walk
 
     # ------------------------------------------------------------------------------
     # NMR FUNCTIONS AND APPLICATIONS 
     # ------------------------------------------------------------------------------
-    class NMRFunctions:
+    class NMRFunctions(NONCOVToolbox):
         """
         Collection of useful functions for working with NMR parameters.
         """
@@ -861,7 +876,6 @@ class NONCOVToolbox:
             return r_ov
         
         # Generate sets of equivalent euler angles based on AZYZ, PZYZ, AZXZ, PZXZ conventions
-        @staticmethod
         def EqEulerSet(alpha, beta, gamma):
             """
             Generate a set of equivalent Euler angle sets.
@@ -880,8 +894,10 @@ class NONCOVToolbox:
 
             return euler_equivalents
         
-        
-    class OrcaAnalysis:
+    # ------------------------------------------------------------------------------
+    # ANALYSE ORCA OUTPUTS AND PLOT
+    # ------------------------------------------------------------------------------
+    class OrcaAnalysis(NONCOVToolbox):
         """
         Class for data analysis of ORCA outputs. Only works for the EPR/NMR module outputs.
         """
@@ -1723,12 +1739,17 @@ class NONCOVToolbox:
 
             # ------------------------------------------------ #
     
+    # ------------------------------------------------------------------------------
+    # NMR FUNCTIONS AND APPLICATIONS 
+    # ------------------------------------------------------------------------------
     class DistanceScanner:
         """
         Take an input structure with two fragments and displace along centroid vector
         """
         
-        
+    # ------------------------------------------------------------------------------
+    # GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
+    # ------------------------------------------------------------------------------ 
     class GenerateMLDataset:
         
         def __init__(self, root_directory, output_csv_path):
@@ -1748,14 +1769,7 @@ class NONCOVToolbox:
             print("          |            Worringerweg 2, Germany            |")
             print("          |                                               |")
             print("          #################################################\n")
-            
-            # Print versions
-            version = '0.0.3'
-            print("Stable version: {}\n\n".format(version))
-            print("Working python version:")
-            print(sys.version)
-            print('\n')
-            
+                        
             self.root_directory = root_directory
         
             self.output_csv_path = output_csv_path

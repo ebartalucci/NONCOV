@@ -57,10 +57,6 @@ class TerminalWidget(QTextEdit):
             self.log_file.write(f"{command}\n")
             self.log_file.flush()
 
-            # Display the entered command
-            #self.insertPlainText(f"You entered: {command}\n")
-            #self.insertPrompt()
-
 class NC2IpyGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -68,7 +64,7 @@ class NC2IpyGUI(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle("NC2Ipy - Scientific Software")
-        self.setGeometry(100, 100, 800, 400)
+        self.setGeometry(500, 250, 1000, 400)
 
         # Create a central widget
         central_widget = QWidget(self)
