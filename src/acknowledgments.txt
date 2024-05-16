@@ -1,0 +1,12 @@
+\* --------------------------------------------*\
+\            ACKNOWLEDGMENTS LIST               \
+\                                               \
+\  This work constitutes part of my PhD project \
+\  focusing on the detection, quantification    \
+\  and analysis of noncovalent interaction.     \
+\  The following list shall be acknowledged:    \
+\                                               \
+\  - Olivia Gammp, M.Sc. @ ETH Zurich           \
+\  - 
+
+\* --------------------------------------------*\

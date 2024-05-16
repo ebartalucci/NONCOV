@@ -23,7 +23,7 @@ class TerminalWidget(QTextEdit):
         self.insertPrompt()
 
         # Terminal logs  
-        self.log_file = open("gui/python/terminal_log.txt", "a")
+        self.log_file = open("terminal_log.txt", "a")
 
         # Write the headline with date, time, and creator's name
         headline = f"-------- (NC)2I.py TERMINAL LOGS: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} created by Ettore Bartalucci -------- \n"
