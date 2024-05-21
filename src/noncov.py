@@ -61,7 +61,7 @@ class NONCOVToolbox:
             sys.exit(1)
 
     # ------------------------------------------------------------------------------
-    # BIOMOLECULAR APPLICATIONS 
+    #                           BIOMOLECULAR APPLICATIONS                          #
     # ------------------------------------------------------------------------------
     class AminoStat(NONCOVToolbox):
         """
@@ -895,14 +895,30 @@ class NONCOVToolbox:
             return euler_equivalents
         
     # ------------------------------------------------------------------------------
-    # ANALYSE ORCA OUTPUTS AND PLOT
+    #                         ANALYSE ORCA OUTPUTS AND PLOT                        #
     # ------------------------------------------------------------------------------
     class OrcaAnalysis(NONCOVToolbox):
         """
         Class for data analysis of ORCA outputs. Only works for the EPR/NMR module outputs.
         """
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
+        def __init__(self):
+            # Print header and version
+            print("\n\n          #################################################")
+            print("          | --------------------------------------------- |")
+            print("          |         (NC)^2I.py: NMR Calculations          |")
+            print("          |         for Noncovalent Interactions          |")
+            print("          | --------------------------------------------- |")
+            print("          |      CALLING EXTERNAL MODULE: OrcaAnalysis    |")
+            print("          |                       -                       |")
+            print("          |           ORCA ANALYSIS COLLECTIONS           |")
+            print("          |                                               |")
+            print("          |               Ettore Bartalucci               |")
+            print("          |     Max Planck Institute CEC & RWTH Aachen    |")
+            print("          |            Worringerweg 2, Germany            |")
+            print("          |                                               |")
+            print("          #################################################\n")
+            pass
+        
         # SECTION 1: READ ORCA OUTPUT FILES AND COUNT NUMBER OF JOBS
         def count_jobs_number(output_file):
             """
@@ -918,11 +934,6 @@ class NONCOVToolbox:
                         count += 1
                 return count
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 2: READ ORCA OUTPUT FILES AND EXTRACT LEVEL OF THEORY
         def extract_level_of_theory(output_file):
             """
@@ -951,11 +962,6 @@ class NONCOVToolbox:
             except Exception as e:
                 return f"An error occurred: {str(e)}"
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 3: READ ORCA OUTPUT FILES AND SPLIT FOR NUMBER OF JOBS
         def split_orca_output(output_file):
             """
@@ -1020,11 +1026,6 @@ class NONCOVToolbox:
                     initial_content.append(line) # and append to file
             return initial_content
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 4: READ ORCA PROPERTY FILES AND EXTRACT SHIELDINGS
         def read_property_file(property_file, job_number):
             """
@@ -1087,11 +1088,6 @@ class NONCOVToolbox:
                 
                 print(f"Shieldings extracted and saved to 'nmr_data/shieldings_job{job_number}.txt'.")
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- Start --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 5: READ ORCA OUTPUT FILE FOR EXTRACTING SCALAR COUPLINGS
         def read_couplings(output_file): # need run only if in input ssall
             """
@@ -1154,11 +1150,6 @@ class NONCOVToolbox:
 
             print("J couplings extracted and saved to 'nmr_data/j_couplings.txt'.")
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 6: PLOTTING NMR DATA (I) SHIELDING TENSOR COMPONENTS
         def extract_shielding_tensor(shielding_tensor):
             """
@@ -1223,11 +1214,6 @@ class NONCOVToolbox:
             
             return sigma_xx, sigma_yy, sigma_zz, nuc_identity
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 7: PLOTTING NMR DATA (II) ISOTROPIC CHEMICAL SHIFT
         def extract_isotropic_shifts(shielding_tensor):
             """
@@ -1266,11 +1252,6 @@ class NONCOVToolbox:
             
             return nucleus_data
 
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- halfway --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 8: NONCOVALENT INTERACTION DISTANCE CLASSIFIER
         def set_noncov_interactions():
             # Display possible options to the user
@@ -1317,10 +1298,8 @@ class NONCOVToolbox:
         # SECTION 9: EXTRACT INITIAL DISTANCE BETWEEN NUCLEAR PAIRS FOR DISTANCE PLOTS
         # compute the displacement as a difference between the coordinates of the first point and the
         # coordinates of the second point.
-        # ----------------------------------------------------------------#
 
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
+
         # SECTION 10: PLOTTING NMR DATA (III) IN PAS: DIAMAGNETIC, PARAMAGNETIC, TOTAL CSA TENSOR
         def extract_csa_tensor_in_pas(splitted_output_file):
             """
@@ -1421,12 +1400,6 @@ class NONCOVToolbox:
 
             return sigma_dia, sigma_para, sigma_tot, nuc_identity
 
-
-        # ----------------------------------------------------------------#
-
-
-        # -------------------------- DONE --------------------------------#
-        # ----------------------------------------------------------------#
         # SECTION 11: PLOT MOLECULAR FRAME
         def plot_3d_molecule(molecule_path, sizes=None):
             """
