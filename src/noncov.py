@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  16.05.2024                 #
+#               Last:  27.05.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.0.1                       #
@@ -74,13 +74,6 @@ class NONCOVToolbox:
             print("          |  Plot statistics of amino acids distribution  |")
             print("          |           in given protein sequence           |")
             print("          | --------------------------------------------- |")
-            print("          |                       -                       |")
-            print("          |           NMR FUNCTIONS COLLECTIONS           |")
-            print("          |                                               |")
-            print("          |               Ettore Bartalucci               |")
-            print("          |     Max Planck Institute CEC & RWTH Aachen    |")
-            print("          |            Worringerweg 2, Germany            |")
-            print("          |                                               |")
             print("          #################################################\n")
 
         def space_prot_seq(self, prot_seq, spaced_prot_seq):
@@ -211,13 +204,7 @@ class NONCOVToolbox:
             print("          |         for Noncovalent Interactions          |")
             print("          | --------------------------------------------- |")
             print("          |      CALLING EXTERNAL MODULE: NMRFunctions    |")
-            print("          |                       -                       |")
-            print("          |           NMR FUNCTIONS COLLECTIONS           |")
-            print("          |                                               |")
-            print("          |               Ettore Bartalucci               |")
-            print("          |     Max Planck Institute CEC & RWTH Aachen    |")
-            print("          |            Worringerweg 2, Germany            |")
-            print("          |                                               |")
+            print("          | --------------------------------------------- |")
             print("          #################################################\n")
             pass
 
@@ -902,6 +889,9 @@ class NONCOVToolbox:
         Class for data analysis of ORCA outputs. Only works for the EPR/NMR module outputs.
         """
         def __init__(self):
+            # Call the __init__ method of the parent class
+            super().__init__()
+            
             # Print header and version
             print("\n\n          #################################################")
             print("          | --------------------------------------------- |")
@@ -909,18 +899,12 @@ class NONCOVToolbox:
             print("          |         for Noncovalent Interactions          |")
             print("          | --------------------------------------------- |")
             print("          |      CALLING EXTERNAL MODULE: OrcaAnalysis    |")
-            print("          |                       -                       |")
-            print("          |           ORCA ANALYSIS COLLECTIONS           |")
-            print("          |                                               |")
-            print("          |               Ettore Bartalucci               |")
-            print("          |     Max Planck Institute CEC & RWTH Aachen    |")
-            print("          |            Worringerweg 2, Germany            |")
-            print("          |                                               |")
+            print("          | --------------------------------------------- |")
             print("          #################################################\n")
             pass
         
         # SECTION 1: READ ORCA OUTPUT FILES AND COUNT NUMBER OF JOBS
-        def count_jobs_number(output_file):
+        def count_jobs_number(self, output_file):
             """
             Read the output (.mpi8.out) file from an ORCA calculation and count how many jobs have been run.
             :param output_file: output file from orca in the form .mpi8.out
@@ -935,7 +919,7 @@ class NONCOVToolbox:
                 return count
 
         # SECTION 2: READ ORCA OUTPUT FILES AND EXTRACT LEVEL OF THEORY
-        def extract_level_of_theory(output_file):
+        def extract_level_of_theory(self, output_file):
             """
             Read the output (.mpi8.out) file from an ORCA calculation and extract level of theory.
             :param output_file: output file from orca in the form .mpi8.out
@@ -963,7 +947,7 @@ class NONCOVToolbox:
                 return f"An error occurred: {str(e)}"
 
         # SECTION 3: READ ORCA OUTPUT FILES AND SPLIT FOR NUMBER OF JOBS
-        def split_orca_output(output_file):
+        def split_orca_output(self, output_file):
             """
             This function splits the huge ORCA multi-job file into individual job files.
             Then sews it back with the initial output lines from ORCA so that the files can
@@ -971,14 +955,14 @@ class NONCOVToolbox:
             :param output_file: output file from orca in the form .mpi8.out
             """
             if not os.path.isfile(output_file):
-                print(f"Error in SECTION 3: ORCA output file '{output_file}' not found, please define.")
+                print(f"Error in OrcaAnalysis: ORCA output file '{output_file}' not found, please define.")
                 return
 
             # Make use of RegEx for matching JOB lines
             job_matching = re.compile(r'\$+\s*JOB\s+NUMBER\s+(\d+) \$+')
 
             # Extract initial ORCA text before job files to append to splitted files
-            initial_content = extract_initial_output_content(output_file, job_matching)
+            initial_content = self.extract_initial_output_content(output_file, job_matching)
 
             with open(output_file, 'r') as f:
                 current_job_n = None # current job number
@@ -989,7 +973,7 @@ class NONCOVToolbox:
                     if match:
                         # if match is found, write to file
                         if current_job_n is not None:
-                            output_file_path = f'split_output/splitted_orca_job{current_job_n}.out'
+                            output_file_path = f'scratch/OrcaAnalysis/split_orca_output/splitted_orca_job{current_job_n}.out'
                             with open(output_file_path, 'w') as out:
                                 out.writelines(initial_content + current_job_content) # initial orca info + job specific info
                             
@@ -1002,7 +986,7 @@ class NONCOVToolbox:
 
                 # write last job to file
                 if current_job_n is not None:
-                    output_file_path = f'split_output/splitted_orca_job{current_job_n}.out'
+                    output_file_path = f'scratch/OrcaAnalysis/split_orca_output/splitted_orca_job{current_job_n}.out'
                     with open(output_file_path, 'w') as out:
                         out.writelines(initial_content + current_job_content)
                     
@@ -1011,7 +995,7 @@ class NONCOVToolbox:
             print(f'ORCA output has been split into {current_job_n} sub files for further analysis')
 
         # This adds the initial content necessary for avogadro visualization to each splitted file
-        def extract_initial_output_content(output_file, job_matching):
+        def extract_initial_output_content(self, output_file, job_matching):
             """
             Add the initial ORCA file until JOB NUMBER to each file to be read by Avogadro.
             :param output_file: output file from orca in the form .mpi8.out
@@ -1025,70 +1009,176 @@ class NONCOVToolbox:
                         break # break as soon as you see the first job line 
                     initial_content.append(line) # and append to file
             return initial_content
+        
+        # SECTION 4: NONCOVALENT INTERACTION DISTANCE CLASSIFIER
+        def set_noncov_interactions(self):
+            # Display possible options to the user
+            # Adjust based on the number of noncovalent interactions you want
+            print("NONCOV effective distances options:")
+            print("1. Cation-pi")
+            print("2. Anion-pi")
+            print("3. pi-pi")
+            print("4. H-bond")
+            print("5. Polar-pi")
+            print("6. n-pi*")
+            print("Press Enter to skip")
 
-        # SECTION 4: READ ORCA PROPERTY FILES AND EXTRACT SHIELDINGS
-        def read_property_file(property_file, job_number):
-            """
-            Read the property file from an ORCA calculation. Extract CSA shieldings (shielding tensor (ppm))
-            and shifts (P(iso)) for each nucleus.
-
-            Input:
-            property_file:
-                is the file that comes as outcome from ORCA calculations containing the most important informations
-                on the simulations. We want the NMR parameter, but in principle it contains a summary of the ORCA
-                .mpi8.out file.
-            job_number:
-                number of ORCA jobs ran
-            Output:
-            shielding_{job_number}.txt:
-                file with condensed NMR data ready for plotting.
-                It contains csa_tensor_data for the shielding tensor and shifts_data for the isotropic shifts
-            """
-
-            # Dictionary to store NMR data for each nucleus
-            csa_tensor_data = {}
-            shifts_data = {}
-
-            nucleus_info = None
-            reading_shielding = False
-
-            with open(property_file, 'r') as f:
-                for line in f:
-                    if "Nucleus:" in line:
-                        nucleus_info = line.strip().split()
-                        nucleus_index = int(nucleus_info[1])
-                        nucleus_name = nucleus_info[2]
-                        csa_tensor_data[(nucleus_index, nucleus_name)] = []
-                        reading_shielding = True
-                    elif reading_shielding and "Shielding tensor (ppm):" in line:
-                        # Skip the header line
-                        next(f)
-                        shielding_values = []
-                        for _ in range(3):
-                            tensor_line = next(f).split()
-                            shielding_values.append([float(val) for val in tensor_line])
-                        csa_tensor_data[(nucleus_index, nucleus_name)] = shielding_values
-                    elif "P(iso)" in line:
-                        shifts = float(line.split()[-1])
-                        shifts_data[(nucleus_index, nucleus_name)] = shifts
-                        reading_shielding = False
-
-            # Write the extracted data to shieldings.txt
-            output_shielding_path = f'nmr_data/shieldings_{job_number}.txt'
-            for job_n in range(1, job_number +1):
-                with open(output_shielding_path, "w") as output_f:
-                    for (nucleus_index, nucleus_name), shielding_values in csa_tensor_data.items():
-                        output_f.write(f"Nucleus {nucleus_index} {nucleus_name}\nShielding tensor (ppm):\n")
-                        for values in shielding_values:
-                            values = values[1:]
-                            output_f.write("\t".join(map(str, values)) + "\n")
-                        shifts = shifts_data[(nucleus_index, nucleus_name)]
-                        output_f.write(f"Isotropic Shift Nucleus {nucleus_index} {nucleus_name}: {shifts}\n")
-                        output_f.write("\n")
+            # Get user input and validate
+            while True:
+                user_input = input("Enter your choice of NONCOV type please (1-6): ")
                 
-                print(f"Shieldings extracted and saved to 'nmr_data/shieldings_job{job_number}.txt'.")
+                if user_input == "": # skip the settings of noncov interaction distance
+                    return None
+                
+                try:
+                    user_choice = int(user_input)
+                    if 1 <= user_choice <= 6:
+                        return user_choice
+                    else:
+                        print("Invalid choice. Please enter a number between 1 and 6.")
+                except ValueError:
+                    print("Invalid input. Please enter a valid number.")
 
-        # SECTION 5: READ ORCA OUTPUT FILE FOR EXTRACTING SCALAR COUPLINGS
+        def set_boundary_distance_values(self, user_choice):
+            # Skip if user doesnt chose
+            if user_choice is None:
+                return None, None
+
+            # Set min and max effective distance values in Angstroem based on user's choice
+            if user_choice == 1: # Cation-pi interaction from https://doi.org/10.1016%2Fj.jmb.2021.167035
+                return 2, 6
+            elif user_choice == 2: # Anion-pi interaction from https://doi.org/10.1039%2Fc5sc01386k
+                return 2, 5
+            elif user_choice == 3: # pi-pi interaction
+                return 1, 5
+            elif user_choice == 4: # H-bond interaction from https://doi.org/10.1016/B978-012486052-0/50005-1
+                return 2.7, 3.3
+            elif user_choice == 5: # Polar-pi interaction
+                return 1, 5
+            elif user_choice == 6: # n-pi* interaction
+                return 1, 5
+            
+        def run_boundary_checks(self):
+            noncov_type = self.set_noncov_interactions()
+            min_distance_value, max_distance_value = self.set_boundary_distance_values(noncov_type)
+
+            if min_distance_value is None and max_distance_value is None:
+                print("No interaction has been set, proceding as default")
+
+            else:
+                print(f"Selected boundary distance values / Å: min={min_distance_value}, max={max_distance_value}")
+
+        # SECTION 5: EXTRACT NMR DATA FROM OUTPUT FILE
+        def extract_csa_data(splitted_output_file):
+            """
+            Load the splitted orca output files and read total CSA tensor and its components
+            Input:
+            splitted_output_file: orca output file splitted by number of jobs
+            Output:
+            :shielding_dia: diagonal diamagnetic shielding tensor components
+            :shielding_para: diagonal paramagnetic shielding tensor components  
+            :shielding_tot: diagonal total shielding tensor components
+            :nuc_identity: nucleus associated with the tensor values
+            Output_file:
+            shielding_{job_number}.txt: condensed nmr info ready for plotting
+            """
+
+            # Dictionaries to store diamagnetic tensor components for each nucleus type
+            shielding_dia = {}  
+
+            # Dictionaries to store paramagnetic tensor components for each nucleus type
+            shielding_para = {}  
+
+            # Dictionaries to store total tensor components for each nucleus type
+            shielding_tot = {}  
+
+            # Read shielding tensor from file - continue from here
+            try:
+                with open(splitted_output_file, 'r') as f:
+                    lines = f.readlines()
+
+                # nucleus marker
+                current_nucleus = None
+
+                # marker for shielding search
+                start_search = False
+
+                for i, line in enumerate(lines):
+                    # Start searching after encountering the CHEMICAL SHIFTS flag
+                    if 'CHEMICAL SHIFTS' in line:
+                        start_search = True
+                        continue
+
+                    if start_search:
+                        line = line.strip()
+                        if line.startswith('Nucleus'):
+                            if current_nucleus is not None:
+                                shielding_dia[current_nucleus] = current_dia_shielding
+                                shielding_para[current_nucleus] = current_para_shielding
+                                shielding_tot[current_nucleus] = current_tot_shielding
+                            
+                            # add the nucleus information to file
+                            nucleus_info = line.split()[1:]
+                            current_nucleus = f"Nucleus {' '.join(nucleus_info)}"
+                            current_dia_shielding = []
+                            current_para_shielding = []
+                            current_tot_shielding = []
+
+                        # Extract the various tensor components here
+                        elif line.startswith('Diamagnetic contribution'):
+                            try:
+                                dia_tensor_matrix = []
+                                for j in range(1, 4):
+                                    dia_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                                current_dia_shielding = dia_tensor_matrix
+                            except (ValueError, IndexError):
+                                print('Error encountered when extracting Diamagnetic tensor components')
+                                continue
+
+                        elif line.startswith('Paramagnetic contribution'):
+                            try:
+                                para_tensor_matrix = []
+                                for j in range(1, 4):
+                                    para_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                                current_para_shielding = para_tensor_matrix
+                            except (ValueError, IndexError):
+                                print('Error encountered when extracting Paramagnetic tensor components')
+                                continue
+
+                        elif line.startswith('Total shielding'):
+                            try:
+                                tot_tensor_matrix = []
+                                for j in range(1, 4):
+                                    tot_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                                current_tot_shielding = tot_tensor_matrix
+                            except (ValueError, IndexError):
+                                print('Error encountered when extracting Total shielding tensor components')
+                                continue
+                    
+                    # stop extraction at the end of the tensor nmr block of the output
+                    if 'CHEMICAL SHIELDING SUMMARY (ppm)' in line:
+                        break
+
+                # Store last nucleus data
+                if current_nucleus is not None:
+                    shielding_dia[current_nucleus] = current_dia_shielding
+                    shielding_para[current_nucleus] = current_para_shielding
+                    shielding_tot[current_nucleus] = current_tot_shielding 
+
+            except FileNotFoundError:
+                print(f"File '{splitted_output_file}' not found.")
+                return {}, {}, {}, []
+            
+            # Extract all the nuclear identities in xyz file
+            nuc_identity = list(shielding_tot.keys())
+
+            return shielding_dia, shielding_para, shielding_tot, nuc_identity
+        
+ 
+        # shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
+
+
+        # SECTION 6: EXTRACT SCALAR COUPLINGS IF PRESENT
         def read_couplings(output_file): # need run only if in input ssall
             """
             Read the output file from an ORCA calculation. Extract scalar couplings for each nucleus
@@ -1149,146 +1239,6 @@ class NONCOVToolbox:
                     output_file.write(f"{nucleus}\t{' '.join(j_couplings)}\n")
 
             print("J couplings extracted and saved to 'nmr_data/j_couplings.txt'.")
-
-        # SECTION 6: PLOTTING NMR DATA (I) SHIELDING TENSOR COMPONENTS
-        def extract_shielding_tensor(shielding_tensor):
-            """
-            Load the previously extracted shielding values and plot them as a function of distance.
-            Input:
-            shielding_tensor: filex extracted from the property data containing shielding tensor and isotropic shielding
-            Output:
-            sigma_xx, sigma_yy, sigma_zz: shielding tensor components for plotting with type dict   
-            """
-
-            # Dictionaries to store tensor components for each nucleus type
-            sigma_xx = {}  
-            sigma_yy = {}
-            sigma_zz = {}
-            
-            # Read shielding tensor from file - continue from here
-            with open(shielding_tensor, 'r') as f:
-                lines = f.readlines()
-
-            current_nucleus = None
-
-            current_shielding_xx = []
-            current_shielding_yy = []
-            current_shielding_zz = []
-
-            for i, line in enumerate(lines):
-                line = line.strip()
-                if line.startswith('Nucleus'):
-                    if current_nucleus is not None:
-                        sigma_xx[current_nucleus] = current_shielding_xx
-                        sigma_yy[current_nucleus] = current_shielding_yy
-                        sigma_zz[current_nucleus] = current_shielding_zz
-                    nucleus_info = line.split()[1:]  # Extracting both number and type
-                    current_nucleus = f"Nucleus {' '.join(nucleus_info)}"
-                    current_shielding_xx = []
-                    current_shielding_yy = []
-                    current_shielding_zz = []
-
-                elif line.startswith('Shielding tensor (ppm):'):
-                    tensor_component_xx = float(lines[i + 1].split()[0])
-                    tensor_component_yy = float(lines[i + 2].split()[1])
-                    tensor_component_zz = float(lines[i + 3].split()[2])
-
-                    current_shielding_xx.append(tensor_component_xx)
-                    current_shielding_yy.append(tensor_component_yy)
-                    current_shielding_zz.append(tensor_component_zz)
-
-            if current_nucleus is not None:
-                sigma_xx[current_nucleus] = current_shielding_xx
-                sigma_yy[current_nucleus] = current_shielding_yy
-                sigma_zz[current_nucleus] = current_shielding_zz 
-
-            # Print the dictionary keys, which are then nuclear types
-            #print(f'Nuclear data keys for CSA tensors are: {sigma_xx.keys()}')
-            
-            # Get number of nuclei per simulation
-            n_nuclei = len(sigma_xx.keys())
-            #print(f'Number of nuclei per simulation is: {n_nuclei}')
-
-            # Extract all the nuclear identities in xyz file
-            nuc_identity = sigma_xx.keys()
-            
-            return sigma_xx, sigma_yy, sigma_zz, nuc_identity
-
-        # SECTION 7: PLOTTING NMR DATA (II) ISOTROPIC CHEMICAL SHIFT
-        def extract_isotropic_shifts(shielding_tensor):
-            """
-            Load the previously extracted isotropic shift values and plot them as a function of distance
-            """
-
-            nucleus_data = {}  # Dictionary to store data for each nucleus type
-            
-            with open(shielding_tensor, 'r') as f:
-                lines = f.readlines()
-
-            current_nucleus = None
-            current_data = []
-
-            for line in lines:
-                line = line.strip()
-                if line.startswith('Nucleus'):
-                    if current_nucleus is not None:
-                        nucleus_data[current_nucleus] = current_data
-                    nucleus_info = line.split()[1:]  # Extracting both number and type
-                    current_nucleus = f"Nucleus {' '.join(nucleus_info)}"
-                    current_data = []
-                elif line.startswith('Isotropic Shift Nucleus'):
-                    isotropic_shift = float(line.split()[-1])
-                    current_data.append(isotropic_shift)
-
-            if current_nucleus is not None:
-                nucleus_data[current_nucleus] = current_data
-            
-            # Print the dictionary keys, which are then nuclear types
-            #print(f'Nuclear data keys are: {nucleus_data.keys()}')
-            
-            # Get number of nuclei per simulation
-            n_nuclei = len(nucleus_data.keys())
-            #print(f'Number of nuclei per simulation is: {n_nuclei}')
-            
-            return nucleus_data
-
-        # SECTION 8: NONCOVALENT INTERACTION DISTANCE CLASSIFIER
-        def set_noncov_interactions():
-            # Display possible options to the user
-            # Adjust based on the number of noncovalent interactions you want
-            print("NONCOV effective distances options:")
-            print("1. Cation-pi")
-            print("2. Anion-pi")
-            print("3. pi-pi")
-            print("4. H-bond")
-            print("5. Polar-pi")
-            print("6. n-pi*")
-
-            # Get user input and validate
-            while True:
-                try:
-                    user_input = int(input("Enter your choice of NONCOV type please (1-6): "))
-                    if 1 <= user_input <= 6:
-                        return user_input
-                    else:
-                        print("Invalid choice. Please enter a number between 1 and 6.")
-                except ValueError:
-                    print("Invalid input. Please enter a valid number.")
-
-        def set_boundary_distance_values(user_choice):
-            # Set min and max effective distance values in Angstroem based on user's choice
-            if user_choice == 1: # Cation-pi interaction from https://doi.org/10.1016%2Fj.jmb.2021.167035
-                return 2, 6
-            elif user_choice == 2: # Anion-pi interaction from https://doi.org/10.1039%2Fc5sc01386k
-                return 2, 5
-            elif user_choice == 3: # pi-pi interaction
-                return 1, 5
-            elif user_choice == 4: # H-bond interaction from https://doi.org/10.1016/B978-012486052-0/50005-1
-                return 2.7, 3.3
-            elif user_choice == 5: # Polar-pi interaction
-                return 1, 5
-            elif user_choice == 6: # n-pi* interaction
-                return 1, 5
 
         # ----------------------------------------------------------------#
 
@@ -1513,14 +1463,8 @@ class NONCOVToolbox:
             print("          |         (NC)^2I.py: NMR Calculations          |")
             print("          |         for Noncovalent Interactions          |")
             print("          | --------------------------------------------- |")
-            print("          |        CALLING CLASS: GenerateMLDataset       |")
-            print("          |                       -                       |")
-            print("          |              MAKE DATASET TABLES              |")
-            print("          |                                               |")
-            print("          |               Ettore Bartalucci               |")
-            print("          |     Max Planck Institute CEC & RWTH Aachen    |")
-            print("          |            Worringerweg 2, Germany            |")
-            print("          |                                               |")
+            print("          |   CALLING EXTERNAL MODULE: GenerateMLDataset  |")
+            print("          | --------------------------------------------- |")
             print("          #################################################\n")
                         
             self.root_directory = root_directory
