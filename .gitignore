@@ -1,3 +1,4 @@
 plot_sequential_NMR_properties/run_all_displaced_distances.mpi8.out
 NC2Ipy_app/node_modules
 DFT_output_on_ssNMR_spectra/nmr_spectra
+tests/data/KLaL_cation_pi_RCCE_opt.mpi8.out
