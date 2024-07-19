@@ -1,0 +1,1 @@
+Found 1r and 2rr files in folder D:\PhD\Data\DFT\NONCOV\DFT_simulations\codes. We will work with both 1D and 2D NMR data.
