@@ -10,11 +10,15 @@ This repository contains all the resources used for the publication below:
 ## Modules
 This toolbox consist of several modules:
 
-- 
+- NMR Function: 
 
--
+- AminoStat
 
--
+- OrcaAnalysis
+
+- GenerateMLDataset
+
+- MolecularGraph
 
 
 ## Resources

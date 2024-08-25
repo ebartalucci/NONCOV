@@ -1,6 +1,5 @@
 ###################################################
-#  ENTRY POINTSOURCE CODE FOR THE NONCOV PROJECT  #
-# ----------------------------------------------- #
+#                                                 #
 #               Ettore Bartalucci                 #
 #               First: 27.05.2024                 #
 #               Last:  27.05.2024                 #
@@ -16,8 +15,6 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-
-
 
 # Get path
 current_dir = os.getcwd()

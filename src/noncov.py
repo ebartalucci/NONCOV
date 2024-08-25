@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  27.05.2024                 #
+#               Last:  24.08.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.0.1                       #
@@ -20,9 +20,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import re  # RegEx
 import nmrglue as ng # NMRglue module for handling NMR spectra 
+import pandas as pd
 
-# Mother class - be careful with class inheritance here
 class NONCOVToolbox:
+    """
+    Parent class, print headers and acknowledgments
+    """
     def __init__(self):
         # Print header and version
         print("\n\n          #################################################")
@@ -41,6 +44,7 @@ class NONCOVToolbox:
         print("          |                                               |")
         print("          #################################################\n")
         
+       
         # Print versions
         version = '0.0.1'
         print("Stable version: {}\n\n".format(version))
@@ -60,21 +64,15 @@ class NONCOVToolbox:
             print(f"An unexpected error occurred: {e}")
             sys.exit(1)
 
-    # ------------------------------------------------------------------------------
-    #                           BIOMOLECULAR APPLICATIONS                          #
-    # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+#                           BIOMOLECULAR APPLICATIONS                          #
+# ------------------------------------------------------------------------------
 class AminoStat(NONCOVToolbox):
     """
     Collection of useful functions for working with proteins and sequences.
     """
     def __init__(self):
-        # Print header and version
-        print("\n\n          #################################################")
-        print("          | --------------------------------------------- |")
-        print("          |  Plot statistics of amino acids distribution  |")
-        print("          |           in given protein sequence           |")
-        print("          | --------------------------------------------- |")
-        print("          #################################################\n")
+        super().__init__('AminoStat')
 
     def space_prot_seq(self, prot_seq, spaced_prot_seq):
         """
@@ -190,23 +188,14 @@ class AminoStat(NONCOVToolbox):
             # continue here with sequence walk
 
 # ------------------------------------------------------------------------------
-# NMR FUNCTIONS AND APPLICATIONS 
+#                        NMR FUNCTIONS AND APPLICATIONS 
 # ------------------------------------------------------------------------------
 class NMRFunctions(NONCOVToolbox):
     """
     Collection of useful functions for working with NMR parameters.
     """
     def __init__(self):
-        # Print header and version
-        print("\n\n          #################################################")
-        print("          | --------------------------------------------- |")
-        print("          |         (NC)^2I.py: NMR Calculations          |")
-        print("          |         for Noncovalent Interactions          |")
-        print("          | --------------------------------------------- |")
-        print("          |      CALLING EXTERNAL MODULE: NMRFunctions    |")
-        print("          | --------------------------------------------- |")
-        print("          #################################################\n")
-        pass
+        super().__init__('NMRFunctions')
 
     # 3x3 Matrix diagonalization and PAS shielding tensor ordering in Mehring and Haberlen conventions
     def diagonalize_tensor(self, sxx, sxy, sxz, syx, syy, syz, szx, szy, szz):
@@ -889,20 +878,8 @@ class OrcaAnalysis(NONCOVToolbox):
     Class for data analysis of ORCA outputs. Only works for the EPR/NMR module outputs.
     """
     def __init__(self):
-        # Call the __init__ method of the parent class
-        super().__init__()
-        
-        # Print header and version
-        print("\n\n          #################################################")
-        print("          | --------------------------------------------- |")
-        print("          |         (NC)^2I.py: NMR Calculations          |")
-        print("          |         for Noncovalent Interactions          |")
-        print("          | --------------------------------------------- |")
-        print("          |      CALLING EXTERNAL MODULE: OrcaAnalysis    |")
-        print("          | --------------------------------------------- |")
-        print("          #################################################\n")
-        pass
-    
+        super().__init__('OrcaAnalysis')
+           
     # SECTION 1: READ ORCA OUTPUT FILES AND COUNT NUMBER OF JOBS
     def count_jobs_number(self, output_file):
         """
@@ -1440,32 +1417,23 @@ class OrcaAnalysis(NONCOVToolbox):
 
     # SECTION 12: PLOT TENSORS ELLIPSOIDS ON MOLECULAR FRAME
 
-
-
 # ------------------------------------------------------------------------------
-# NMR FUNCTIONS AND APPLICATIONS 
+#                        STRUCTURAL CHANGES AND CONFORMERS 
 # ------------------------------------------------------------------------------
 class DistanceScanner:
     """
     Take an input structure with two fragments and displace along centroid vector
     """
+    def __init__(self):
+        super().__init__('DistanceScanner')
     
 # ------------------------------------------------------------------------------
-# GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
+#               GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
 # ------------------------------------------------------------------------------ 
 class GenerateMLDataset:
     
     def __init__(self, root_directory, output_csv_path):
-
-        # Print header and version
-        print("\n\n          #################################################")
-        print("          | --------------------------------------------- |")
-        print("          |         (NC)^2I.py: NMR Calculations          |")
-        print("          |         for Noncovalent Interactions          |")
-        print("          | --------------------------------------------- |")
-        print("          |   CALLING EXTERNAL MODULE: GenerateMLDataset  |")
-        print("          | --------------------------------------------- |")
-        print("          #################################################\n")
+        super().__init__('GenerateMLDataset')
                     
         self.root_directory = root_directory
     
@@ -1687,3 +1655,23 @@ class GenerateMLDataset:
         if self.df.empty:
             print("No raw data has been found matching the specified criteria.")
 
+# ------------------------------------------------------------------------------
+#                       DESCRIPTORS AND FEATURE SELECTION
+# ------------------------------------------------------------------------------
+class MolFeats:
+    """
+    Take an input structure with two fragments and displace along centroid vector
+    """
+    def __init__(self):
+        super().__init__('MolFeats')
+
+
+# ------------------------------------------------------------------------------
+#                       DATA HANDLING AND DATABASE PUSH
+# ------------------------------------------------------------------------------
+class MakeDatabase:
+    """
+    Take an input structure with two fragments and displace along centroid vector
+    """
+    def __init__(self):
+        super().__init__('MakeDatabase')
