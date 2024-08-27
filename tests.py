@@ -79,7 +79,6 @@ class MolecularGraph:
         fig.show()
 
 
-    # Checked
     def parse_xyz(self, file_path):
         with open(file_path, 'r') as f:
             lines = f.readlines()
@@ -183,6 +182,8 @@ def main(molecule_path):
 threshold = 0.6
 current_dir = os.getcwd()
 print(f'Current working directory is: {current_dir}')
-molecule = os.path.join(current_dir, 'scratch/test_structs/caffeine.xyz')
+#molecule = os.path.join(current_dir, 'scratch/test_structs/caffeine.xyz')
+
+molecule = 'd:/PhD/Data/DFT/NONCOV/DFT_simulations/codes/scratch/test_structs/caffeine.xyz'
 
 main(molecule)
