@@ -28,6 +28,7 @@ import re  # RegEx
 import nmrglue as ng # NMRglue module for handling NMR spectra 
 import pandas as pd
 
+
 class NONCOVToolbox:
     """
     Parent class, print headers and acknowledgments
@@ -1218,7 +1219,7 @@ class OrcaAnalysis(NONCOVToolbox):
                     j_coupling_data[nucleus] = j_couplings
                     
         # Write the formatted J coupling data to j_couplings.txt
-        with open('nmr_data/j_couplings.txt', 'w') as output_file:
+        with open('scratch/OrcaAnalysis/nmr_data/j_couplings.txt', 'w') as output_file:
             # Write the header row with nuclei information
             output_file.write('\t'.join(nuclei_order) + '\n')
             
@@ -1434,6 +1435,10 @@ class OrcaAnalysis(NONCOVToolbox):
 class DistanceScanner(NONCOVToolbox):
     """
     Take an input structure with two fragments and displace along centroid vector
+     General remarks:
+     - only works for displacing two fragments
+     - if cartesian coordinates in input file are negative, you will have a negative 
+       displacement vector, please fix accordingly
     """
     def __init__(self):
         super().__init__('DistanceScanner')
@@ -1640,7 +1645,7 @@ class DistanceScanner(NONCOVToolbox):
 # ------------------------------------------------------------------------------
 #               GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
 # ------------------------------------------------------------------------------ 
-class GenerateMLDataset:
+class GenerateMLDataset(NONCOVToolbox):
     
     def __init__(self, root_directory, output_csv_path):
         super().__init__('GenerateMLDataset')

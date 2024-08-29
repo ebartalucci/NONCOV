@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 
 class MolecularGraph:
     def __init__(self):
-        super().__init__('MolFeats')
         self.graph = nx.Graph()
 
     def add_atom(self, atom_index, atom_type, coordinate):
@@ -353,7 +352,8 @@ threshold = 1.6
 current_dir = os.getcwd()
 print(f'Current working directory is: {current_dir}')
 #molecule = os.path.join(current_dir, 'scratch/test_structs/caffeine.xyz')
+molecule = 'C:/Users/ettor/Desktop/NONCOV/scratch/test_structs/benzene_H2O.xyz'
 
-molecule = 'D:/PhD/Data/DFT/NONCOV/DFT_simulations/codes/scratch/test_structs/benzene_H2O.xyz'
+#molecule = 'D:/PhD/Data/DFT/NONCOV/DFT_simulations/codes/scratch/test_structs/benzene_H2O.xyz'
 
 main(molecule)
