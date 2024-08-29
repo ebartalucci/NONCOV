@@ -256,3 +256,51 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+def main(molecule_path):
+
+    mol_graph = MolecularGraph()
+
+    # Parse the XYZ file
+    atom_types, coordinates = mol_graph.parse_xyz(molecule_path)
+    
+    # Calculate pairwise distances
+    distances = mol_graph.calculate_distances(coordinates)
+    
+    # Detect covalent bonds
+    covalent_bonds = mol_graph.detect_bonds(atom_types, distances)
+    
+    # Detect non-covalent interactions
+    noncovalent_interactions = mol_graph.detect_noncovalent_interactions(atom_types, distances)
+    
+    # Build the molecular graph
+    #mol_graph = mol_graph.build_molecular_graph(atom_types, coordinates, covalent_bonds, noncovalent_interactions)
+    
+    # Visualize the molecular graph
+    #mol_graph.draw()
+
+    # Plots 
+    mol_graph.plot_bond_dist_matrix(covalent_bonds, distances, atom_types)
+    mol_graph.plot_noncov_distance_map(noncovalent_interactions, atom_types)
+
+    # Build different graphs
+    covalent_bonds_graph = mol_graph.build_covalent_bonds_graph(atom_types, coordinates, covalent_bonds)
+    intramolecular_graph = mol_graph.build_intramolecular_graph(atom_types, coordinates, covalent_bonds, noncovalent_interactions)
+    intermolecular_graph = mol_graph.build_intermolecular_graph(atom_types, coordinates, noncovalent_interactions)
+
+    # Draw subplots while preserving atom positions
+    mol_graph.draw_subplots(covalent_bonds_graph, intramolecular_graph, intermolecular_graph, coordinates)
+
+
+
+
+threshold = 1.6
+
+current_dir = os.getcwd()
+print(f'Current working directory is: {current_dir}')
+#molecule = os.path.join(current_dir, 'scratch/test_structs/caffeine.xyz')
+
+molecule = 'D:/PhD/Data/DFT/NONCOV/DFT_simulations/codes/scratch/test_structs/benzene_H2O.xyz'
+
+main(molecule)

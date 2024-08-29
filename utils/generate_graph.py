@@ -6,17 +6,17 @@ import networkx as nx
 from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
 
-
 class MolecularGraph:
     def __init__(self):
+        super().__init__('MolFeats')
         self.graph = nx.Graph()
 
     def add_atom(self, atom_index, atom_type, coordinate):
-        self.graph.add_node(atom_index, atom_type=atom_type, coordinate=coordinate[:3])  # Use only x, y for 2D visualization
+        self.graph.add_node(atom_index, atom_type=atom_type, coordinate=coordinate[:3])
     
     def add_bond(self, atom1_index, atom2_index, bond_type="covalent"):
         self.graph.add_edge(atom1_index, atom2_index, bond_type=bond_type)
-            
+
     def draw(self):
         pos = nx.spring_layout(self.graph)  
         labels = nx.get_node_attributes(self.graph, 'atom_type')
@@ -25,6 +25,7 @@ class MolecularGraph:
 
         edge_x = []
         edge_y = []
+        
         for edge in self.graph.edges():
             x0, y0 = pos[edge[0]]
             x1, y1 = pos[edge[1]]
@@ -65,7 +66,7 @@ class MolecularGraph:
 
         fig = go.Figure(data=[edge_trace, node_trace],
                         layout=go.Layout(
-                            title='<br>Molecule Graph Visualization from XYZ',
+                            title='<br>Molecular Graph',
                             titlefont_size=16,
                             showlegend=False,
                             hovermode='closest',
@@ -115,37 +116,54 @@ class MolecularGraph:
         return distances
     
     # clear
-    def plot_distance_matrix(self, distances):
+    def plot_distance_matrix(self, distances, atom_labels):
         distance_matrix = squareform(pdist(distances, 'euclidean'))
         plt.imshow(distance_matrix, cmap='viridis', interpolation='nearest')
         plt.colorbar(label='Distance')
         plt.title('Matrix of 2D distances')
+        plt.xticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
+        plt.yticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
         plt.show()
 
     # clear
-    def plot_bond_matrix(self, bonds_matrix):
+    def plot_bond_matrix(self, bonds_matrix, atom_labels):
         plt.imshow(bonds_matrix, cmap='viridis', interpolation='nearest')
         plt.colorbar(label='Bool')
         plt.title('Matrix of 2D Bonds')
+        plt.xticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
+        plt.yticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
         plt.show()
 
     # clear
-    def plot_bond_dist_matrix(self, bonds_matrix, distances):
+    def plot_bond_dist_matrix(self, bonds_matrix, distances, atom_labels):
         distance_matrix = squareform(pdist(distances, 'euclidean'))
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
         im1 = axes[0].imshow(distance_matrix, cmap='viridis', interpolation='nearest')
         axes[0].set_title('Distance Matrix')
         fig.colorbar(im1, ax=axes[0])
+        axes[0].set_xticks(np.arange(len(atom_labels)))
+        axes[0].set_xticklabels(atom_labels, rotation=90)
+        axes[0].set_yticks(np.arange(len(atom_labels)))
+        axes[0].set_yticklabels(atom_labels)
 
         im2 = axes[1].imshow(bonds_matrix, cmap='gray_r', interpolation='nearest')
         axes[1].set_title('Bonds Matrix')
         fig.colorbar(im2, ax=axes[1])
+        axes[1].set_xticks(np.arange(len(atom_labels)))
+        axes[1].set_xticklabels(atom_labels, rotation=90)
+        axes[1].set_yticks(np.arange(len(atom_labels)))
+        axes[1].set_yticklabels(atom_labels)
 
         axes[2].imshow(distance_matrix, cmap='viridis', interpolation='nearest')
         im3 = axes[2].imshow(bonds_matrix, cmap='gray_r', interpolation='nearest', alpha=0.5)
-        axes[2].set_title('Superimposed Plot')
+        axes[2].set_title('Distance vs. Bonds')
         fig.colorbar(im3, ax=axes[2])
+        axes[2].set_xticks(np.arange(len(atom_labels)))
+        axes[2].set_xticklabels(atom_labels, rotation=90)
+        axes[2].set_yticks(np.arange(len(atom_labels)))
+        axes[2].set_yticklabels(atom_labels)
 
         plt.tight_layout()
         plt.show()
@@ -174,7 +192,7 @@ class MolecularGraph:
         return noncovalent_interactions
     
     # clear / need new logic
-    def plot_noncov_distance_map(self, noncovalent_interactions):
+    def plot_noncov_distance_map(self, noncovalent_interactions, atom_labels):
         # Determine the matrix size
         n = max(max(i[0], i[1]) for i in noncovalent_interactions) + 1
 
@@ -194,15 +212,27 @@ class MolecularGraph:
         im1 = axes[0].imshow(vdw_matrix, cmap='Blues', interpolation='nearest')
         axes[0].set_title('vdW Interactions')
         fig.colorbar(im1, ax=axes[0])
+        axes[0].set_xticks(np.arange(len(atom_labels)))
+        axes[0].set_xticklabels(atom_labels, rotation=90)
+        axes[0].set_yticks(np.arange(len(atom_labels)))
+        axes[0].set_yticklabels(atom_labels)
 
         im2 = axes[1].imshow(hb_matrix, cmap='Reds', interpolation='nearest')
         axes[1].set_title('Hydrogen Bond Interactions')
         fig.colorbar(im2, ax=axes[1])
+        axes[1].set_xticks(np.arange(len(atom_labels)))
+        axes[1].set_xticklabels(atom_labels, rotation=90)
+        axes[1].set_yticks(np.arange(len(atom_labels)))
+        axes[1].set_yticklabels(atom_labels)
 
         axes[2].imshow(vdw_matrix, cmap='Blues', interpolation='nearest')
         im3 = axes[2].imshow(hb_matrix, cmap='Reds', interpolation='nearest', alpha=0.5)
-        axes[2].set_title('Superimposed Interactions')
+        axes[2].set_title('Full NONCOV interactions')
         fig.colorbar(im3, ax=axes[2])
+        axes[2].set_xticks(np.arange(len(atom_labels)))
+        axes[2].set_xticklabels(atom_labels, rotation=90)
+        axes[2].set_yticks(np.arange(len(atom_labels)))
+        axes[2].set_yticklabels(atom_labels)
 
         plt.tight_layout()
         plt.show()
@@ -225,7 +255,60 @@ class MolecularGraph:
             mol_graph.add_bond(i, j, bond_type=interaction_type)
 
         return mol_graph
+    
+    def draw_subplots(self, covalent_bonds_graph, intramolecular_graph, intermolecular_graph, coordinates):
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        
+        # Draw Covalent Bonds Graph
+        self._draw_graph(covalent_bonds_graph, coordinates, ax=axes[0], title='Covalent Bonds')
 
+        # Draw Intramolecular Contacts Graph
+        self._draw_graph(intramolecular_graph, coordinates, ax=axes[1], title='Intramolecular Contacts')
+
+        # Draw Intermolecular Contacts Graph
+        self._draw_graph(intermolecular_graph, coordinates, ax=axes[2], title='Intermolecular Contacts')
+        
+        plt.tight_layout()
+        plt.show()
+
+    def _draw_graph(self, graph, coordinates, ax, title):
+        # Use the original coordinates as the positions for the nodes
+        pos = {i: (coordinates[i][0], coordinates[i][1]) for i in graph.nodes()}  # X, Y coordinates
+
+        labels = nx.get_node_attributes(graph, 'atom_type')
+        bond_types = nx.get_edge_attributes(graph, 'bond_type')
+        edge_colors = ["blue" if bond == "noncovalent" else "red" for bond in bond_types.values()]
+
+        nx.draw(graph, pos, ax=ax, labels=labels, with_labels=True, node_size=500, node_color="skyblue", edge_color=edge_colors, font_size=8)
+        ax.set_title(title)
+
+    def build_covalent_bonds_graph(self, atom_types, coordinates, covalent_bonds):
+        graph = nx.Graph()
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            graph.add_node(i, atom_type=atom_type, coordinate=position)
+        for i in range(len(atom_types)):
+            for j in range(i + 1, len(atom_types)):
+                if covalent_bonds[i, j]:
+                    graph.add_edge(i, j, bond_type="covalent")
+        return graph
+
+    def build_intramolecular_graph(self, atom_types, coordinates, covalent_bonds, noncovalent_interactions):
+        graph = nx.Graph()
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            graph.add_node(i, atom_type=atom_type, coordinate=position)
+        for i, j, interaction_type in noncovalent_interactions:
+            if covalent_bonds[i, j]:  # Intramolecular if there's a covalent bond
+                graph.add_edge(i, j, bond_type="intramolecular")
+        return graph
+
+    def build_intermolecular_graph(self, atom_types, coordinates, noncovalent_interactions):
+        graph = nx.Graph()
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            graph.add_node(i, atom_type=atom_type, coordinate=position)
+        for i, j, interaction_type in noncovalent_interactions:
+            if interaction_type != "intramolecular":  # Intermolecular if not intramolecular
+                graph.add_edge(i, j, bond_type="intermolecular")
+        return graph
 
 
 def main(molecule_path):
@@ -245,25 +328,32 @@ def main(molecule_path):
     noncovalent_interactions = mol_graph.detect_noncovalent_interactions(atom_types, distances)
     
     # Build the molecular graph
-    mol_graph = mol_graph.build_molecular_graph(atom_types, coordinates, covalent_bonds, noncovalent_interactions)
+    #mol_graph = mol_graph.build_molecular_graph(atom_types, coordinates, covalent_bonds, noncovalent_interactions)
     
     # Visualize the molecular graph
-    mol_graph.draw()
+    #mol_graph.draw()
 
     # Plots 
-    mol_graph.plot_bond_dist_matrix(covalent_bonds, distances)
-    mol_graph.plot_noncov_distance_map(noncovalent_interactions)
+    mol_graph.plot_bond_dist_matrix(covalent_bonds, distances, atom_types)
+    mol_graph.plot_noncov_distance_map(noncovalent_interactions, atom_types)
+
+    # Build different graphs
+    covalent_bonds_graph = mol_graph.build_covalent_bonds_graph(atom_types, coordinates, covalent_bonds)
+    intramolecular_graph = mol_graph.build_intramolecular_graph(atom_types, coordinates, covalent_bonds, noncovalent_interactions)
+    intermolecular_graph = mol_graph.build_intermolecular_graph(atom_types, coordinates, noncovalent_interactions)
+
+    # Draw subplots while preserving atom positions
+    mol_graph.draw_subplots(covalent_bonds_graph, intramolecular_graph, intermolecular_graph, coordinates)
+
 
 
 
 threshold = 1.6
 
-
-
 current_dir = os.getcwd()
 print(f'Current working directory is: {current_dir}')
 #molecule = os.path.join(current_dir, 'scratch/test_structs/caffeine.xyz')
 
-molecule = 'C:/Users/ettor/Desktop/NONCOV/scratch/test_structs/caffeine.xyz'
+molecule = 'D:/PhD/Data/DFT/NONCOV/DFT_simulations/codes/scratch/test_structs/benzene_H2O.xyz'
 
 main(molecule)

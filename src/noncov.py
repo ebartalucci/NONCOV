@@ -16,8 +16,14 @@
 import os
 import sys
 import numpy as np
+from pathlib import Path
+from sklearn.cluster import KMeans
+from timeit import default_timer as timer
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import plotly.graph_objects as go
+import networkx as nx
+from scipy.spatial.distance import pdist, squareform
 import re  # RegEx
 import nmrglue as ng # NMRglue module for handling NMR spectra 
 import pandas as pd
@@ -54,14 +60,19 @@ class NONCOVToolbox:
 
         # Print acknowledgments
         try:
-            with open('acknowledgments.txt', 'r') as f:
+            # acknowledgments.txt file is in the same directory as noncov.py
+            file_dir = os.path.dirname(os.path.abspath(__file__))
+            ack_file_path = os.path.join(file_dir, 'acknowledgments.txt')
+
+            with open(ack_file_path, 'r') as f:
                 acknowledgments = f.read()
                 print(acknowledgments)
+        
         except FileNotFoundError:
-            print("Acknowledgments file not found. Please ensure 'acknowledgments.txt' is in the correct directory.")
+            print(f"Acknowledgments file not found at {ack_file_path}. Please ensure 'acknowledgments.txt' is in the correct directory.")
             sys.exit(1)
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            print(f"An error occurred: {e}")
             sys.exit(1)
 
 # ------------------------------------------------------------------------------
@@ -1420,12 +1431,211 @@ class OrcaAnalysis(NONCOVToolbox):
 # ------------------------------------------------------------------------------
 #                        STRUCTURAL CHANGES AND CONFORMERS 
 # ------------------------------------------------------------------------------
-class DistanceScanner:
+class DistanceScanner(NONCOVToolbox):
     """
     Take an input structure with two fragments and displace along centroid vector
     """
     def __init__(self):
         super().__init__('DistanceScanner')
+    
+    # SECTION 1: READING XYZ ATOMIC COORDINATES FROM FILE AND SPLIT THE FRAGMENTS
+    def read_atomic_coord(file_path):
+        """
+        This function reads the geometry optimized atomic coordinates of the two fragments
+        you want to displace, the input is the classical .xyz coordinate file that can
+        be then feeded to ORCA after displacement.
+        :param file_path: path of the atomic coordinate file you want to displace
+        """
+        with open(file_path, 'r') as f:
+            lines = f.readlines()[2:]  # skip the first two lines (atom count and comment)
+            coordinates = []
+            atom_identities = [] # this is the one storing atom identity info, need to append it at a later step
+            for line in lines:
+                atom_data = line.split()
+                atom_identity = atom_data[0] 
+                coord = [float(atom_data[1]), float(atom_data[2]), float(atom_data[3])]
+                coordinates.append(coord)
+                atom_identities.append(atom_identity)
+            coordinates = np.array(coordinates)
+            atom_identities = np.array(atom_identities)
+            return coordinates, atom_identities
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 2: CALCULATION OF CENTROIDS AND STORING VALUES IN FILE
+    def calculate_centroids(coordinates):
+        """
+        This function computes centroids for the defined fragments.
+        :param coordinates: molecular model xyz coordinates for centroid calculations
+        """
+        num_atoms = len(coordinates)
+        centroids = []
+        for fragment in coordinates:
+            centroid = np.sum(fragment, axis=0) / len(fragment)
+            centroids.append(centroid)
+        return np.array(centroids)
+
+    def write_centroids(file_path, centroids):
+        """
+        This function writes centroids to file for furhter manipulation.
+        :param file_path: path where the centroids are written
+        :param centroids: centroid file with coordinates
+        """
+        with open(file_path, 'w') as f:
+            f.write(f'Centroid coordinates:\n')
+            for centroid in centroids:
+                f.write(f'{centroid[0]:.6f} {centroid[1]:.6f} {centroid[2]:.6f}\n')
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 3: CHECKPOINT COMPUTE TOPOLOGY AND K-NEAREST CLUSTERING FOR MOLECULAR CENTROIDS
+    def plot_starting_molecular_fragments(coords1, coords2, centroids):
+        """
+        Plot the initial molecular fragments in 3D
+        :param coords1: coordinates fragment 1, specified in input file
+        :param coords2: coordinates fragment 2, specified in input file
+        :param centroids: coordinates of the respective centroids, given in centroid file
+        """
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111, projection='3d')
+        ax1.scatter(coords1[:, 0], coords1[:, 1], coords1[:, 2], color='blue', label='Molecule 1')
+        ax1.scatter(coords2[:, 0], coords2[:, 1], coords2[:, 2], color='red', label='Molecule 2')
+        ax1.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2], color='green', marker='x', s=100, label='Centroids')
+        ax1.legend()
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 4: READ USER PROVIDED INPUT FILE, SPLIT AND ASSIGN MOLECULAR FRAGMENTS TO INDIVIDUAL MOLECULES
+    def assign_molecule_fragments(coordinates, input_file):
+        """
+        Assign the respective fragments to atom in xyz list
+        :param coordinates: atomic xyz coordinates
+        :param input_file: specifies the numbering of the atoms of each fragment
+        """
+        with open(input_file, 'r') as f:
+            lines = f.readlines()
+            fragment1_indices = []
+            fragment2_indices = []
+            current_fragment = None
+            for line in lines:
+                if line.strip() == "$fragment1":
+                    current_fragment = fragment1_indices
+                elif line.strip() == "$fragment2":
+                    current_fragment = fragment2_indices
+                elif line.strip() == "$displacement":
+                    break
+                else:
+                    index = int(line.strip()) - 1  # Convert 1-based index to 0-based index
+                    current_fragment.append(index)    
+        coords1 = coordinates[fragment1_indices]
+        coords2 = coordinates[fragment2_indices]
+        return coords1, coords2
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 5: DISPLACE THE TWO FRAGMENT ALONG THE CENTROID LINE MOVING ONE AND FIXING THE OTHER
+    def displace_fragment(coords1, displacement_direction, displacement_step, i):
+        """
+        This function displaces the fragment along the displacement_direction vector.
+        :param coords1: coordinates of fragment 1 to be displaced
+        :param displacement_direction: displace fragments along the direction connecting the two centroids
+        :param displacement_step: how many angstroem to displace, specified in input file
+        :param i: for the loop over displacements, specifies how many structures are generated. In future will be the dissociation limit value
+        """
+        displacement_direction /= np.linalg.norm(displacement_direction)  # Normalize the displacement direction vector
+        displacement_vector = - displacement_direction * displacement_step * i # Displace along the normalized direction
+        print(f'Displacement vector: {displacement_vector}')
+        print(type(displacement_vector))
+        return coords1 - displacement_vector  # Apply displacement by adding the vector
+        
+        # From olivia
+        #displacement_vector = coords1 - displacement_direction * i  # displace along one axis 
+        #print(f'Displacement vector:{displacement_vector}') # write this to log file
+        #print(type(displacement_vector)) # write this to log file
+        #return displacement_vector
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 6: WRITE NEW DISPLACED COORDINATES TO FILES
+    def write_displaced_xyz_file(file_path, coords_fixed, coords_displaced, atom_identities):
+        """
+        This function writes both the fixed and displaced coordinates to an XYZ file.
+        :param file_path: where the structure files are written
+        :param coords_fixed: coordinates of the fixed fragment, in this case fragment 2
+        :param coords_displaced: coordinates of the displaced fragment, in this case fragment 1
+        :param atom_identities: append to file the identities of each atom again, since they are lost in processing steps
+        """
+        with open(file_path, 'w') as f:
+            num_atoms = len(coords_fixed) + len(coords_displaced)
+            f.write(f'{num_atoms}\n')
+            f.write(f'Step {file_path.stem}\n')
+
+            # Write fixed fragment coordinates
+            for i, atom in enumerate(coords_fixed):
+                f.write(f'{atom_identities[i+len(coords_displaced)]} {atom[0]:.6f} {atom[1]:.6f} {atom[2]:.6f}\n') # i+len(coord_fixed) to skip to the fixed fragment indices
+            
+            # Write displaced fragment coordinates
+            for i, atom in enumerate(coords_displaced):
+                f.write(f'{atom_identities[i]} {atom[0]:.6f} {atom[1]:.6f} {atom[2]:.6f}\n') 
+            
+    #-------------------------------------------------------------------#
+
+    # SECTION 7: count fragments for K-means clustering
+    def count_fragments(input_file):
+        with open(input_file, 'r') as f:
+            lines = f.readlines()
+            count = 0
+            for line in lines:
+                if line.strip().startswith("$fragment"):
+                    count += 1
+            return count
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 8: COMPUTE DISTANCE OF DISPLACED ATOMS FROM FIXED CENTROID
+    def compute_distance_from_centroid(coord_displaced, centroids):
+        """
+        Calculate relative centroid distances for future analysis
+        :param coords_displaced: coordinates of the 
+        """
+
+        # Convert the lists to NumPy arrays for element-wise operations
+        coord_displaced = np.array(coord_displaced)
+
+        # Assuming fragment_centroids contains two sets of centroids
+        if len(centroids) == 2:
+            fixed_centroid = centroids[1]
+            fixed_centroid = np.array(fixed_centroid)
+
+            # Compute distance 
+            distance_to_centroid = np.linalg.norm(coord_displaced - fixed_centroid, axis=1)
+
+            return distance_to_centroid
+        else:
+            print('Error: fragment_centroids should contain two sets of centroids, if more please modify Section 8')
+
+    #-------------------------------------------------------------------#
+
+    # SECTION 9: WRITE DISTANCES TO FILES
+    def write_distances_file(file_path, coords_displaced, distance_to_centroid, atom_identities, displacement_step):
+        """
+        This function writes the distances between fixed centroid and displaced coordinates to a file.
+        :param file_path: where the distance files will be written
+        :param coords_displaced: coordinates of the displaced fragment
+        :param distance_to_centroid: distance of the displaced coordinates from centroid of the fixed fragment
+        :param atom_identities: identities of each atom which are lost in the processing
+        :param displacement_step: how many angstroem are we displacing this structures
+        """
+        with open(file_path, 'w') as f:
+            num_atoms = len(coords_displaced)
+            f.write(f'Number of atoms: {num_atoms}\n')
+            f.write(f'Step {file_path.stem}\n')
+            f.write(f'Displacement step: {displacement_step} A\n')
+            
+            # Write displaced fragment coordinates
+            for i, atom in enumerate(coords_displaced):
+                f.write(f'{atom_identities[i]} {distance_to_centroid[i]}\n') 
+
     
 # ------------------------------------------------------------------------------
 #               GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
@@ -1658,12 +1868,310 @@ class GenerateMLDataset:
 # ------------------------------------------------------------------------------
 #                       DESCRIPTORS AND FEATURE SELECTION
 # ------------------------------------------------------------------------------
-class MolFeats:
-    """
-    Take an input structure with two fragments and displace along centroid vector
-    """
+class MolecularGraph(NONCOVToolbox):
     def __init__(self):
-        super().__init__('MolFeats')
+        super().__init__('MolecularGraph')
+        self.graph = nx.Graph()
+
+    def add_atom(self, atom_index, atom_type, coordinate):
+        self.graph.add_node(atom_index, atom_type=atom_type, coordinate=coordinate[:3])
+    
+    def add_bond(self, atom1_index, atom2_index, bond_type="covalent"):
+        self.graph.add_edge(atom1_index, atom2_index, bond_type=bond_type)
+
+    def draw(self):
+        pos = nx.spring_layout(self.graph)  
+        labels = nx.get_node_attributes(self.graph, 'atom_type')
+        bond_types = nx.get_edge_attributes(self.graph, 'bond_type')
+        edge_colors = ["blue" if bond == "noncovalent" else "red" for bond in bond_types.values()]
+
+        edge_x = []
+        edge_y = []
+        
+        for edge in self.graph.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=2, color='#888'),
+            hoverinfo='none',
+            mode='lines'
+        )
+
+        node_x = []
+        node_y = []
+        node_text = [labels[node] for node in self.graph.nodes()]
+
+        for node in self.graph.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            hoverinfo='text',
+            text=node_text,
+            marker=dict(
+                showscale=False,
+                color='skyblue',
+                size=20,
+                line_width=2)
+        )
+
+        fig = go.Figure(data=[edge_trace, node_trace],
+                        layout=go.Layout(
+                            title='<br>Molecular Graph',
+                            titlefont_size=16,
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=20,l=5,r=5,t=40),
+                            annotations=[dict(
+                                text="Molecule from XYZ file",
+                                showarrow=False,
+                                xref="paper", yref="paper",
+                                x=0.005, y=-0.002)],
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                        )
+
+        fig.show()
+
+    # clear
+    def parse_xyz(self, file_path):
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+               
+        try:
+            num_atoms = int(lines[0].strip()) # number of atoms in fragment
+            atom_info = lines[2:2+num_atoms] # info on each atom with coordinates in 3D
+        except ValueError:
+            raise ValueError(f"Error parsing the number of atoms: '{lines[0]}' is not a valid integer.")
+        
+        atom_types = []
+        coordinates = []
+
+        for line in atom_info:
+            parts = line.split()
+            atom_type = parts[0] # nucleus
+            x, y, z = map(float, parts[1:4]) # coordinates
+            atom_types.append(atom_type)
+            coordinates.append((x, y, z))
+
+        coordinates = np.array(coordinates)
+        return atom_types, coordinates
+
+    # clear
+    def calculate_distances(self, coordinates):
+        num_atoms = len(coordinates)
+        distances = np.zeros((num_atoms, num_atoms))
+        for i in range(num_atoms):
+            for j in range(i + 1, num_atoms):
+                distances[i, j] = distances[j, i] = np.linalg.norm(coordinates[i] - coordinates[j])
+        return distances
+    
+    # clear
+    def plot_distance_matrix(self, distances, atom_labels):
+        distance_matrix = squareform(pdist(distances, 'euclidean'))
+        plt.imshow(distance_matrix, cmap='viridis', interpolation='nearest')
+        plt.colorbar(label='Distance')
+        plt.title('Matrix of 2D distances')
+        plt.xticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
+        plt.yticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
+        plt.show()
+
+    # clear
+    def plot_bond_matrix(self, bonds_matrix, atom_labels):
+        plt.imshow(bonds_matrix, cmap='viridis', interpolation='nearest')
+        plt.colorbar(label='Bool')
+        plt.title('Matrix of 2D Bonds')
+        plt.xticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
+        plt.yticks(ticks=np.arange(len(atom_labels)), labels=atom_labels)
+        plt.show()
+
+    # clear
+    def plot_bond_dist_matrix(self, bonds_matrix, distances, atom_labels):
+        distance_matrix = squareform(pdist(distances, 'euclidean'))
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+        im1 = axes[0].imshow(distance_matrix, cmap='viridis', interpolation='nearest')
+        axes[0].set_title('Distance Matrix')
+        fig.colorbar(im1, ax=axes[0])
+        axes[0].set_xticks(np.arange(len(atom_labels)))
+        axes[0].set_xticklabels(atom_labels, rotation=90)
+        axes[0].set_yticks(np.arange(len(atom_labels)))
+        axes[0].set_yticklabels(atom_labels)
+
+        im2 = axes[1].imshow(bonds_matrix, cmap='gray_r', interpolation='nearest')
+        axes[1].set_title('Bonds Matrix')
+        fig.colorbar(im2, ax=axes[1])
+        axes[1].set_xticks(np.arange(len(atom_labels)))
+        axes[1].set_xticklabels(atom_labels, rotation=90)
+        axes[1].set_yticks(np.arange(len(atom_labels)))
+        axes[1].set_yticklabels(atom_labels)
+
+        axes[2].imshow(distance_matrix, cmap='viridis', interpolation='nearest')
+        im3 = axes[2].imshow(bonds_matrix, cmap='gray_r', interpolation='nearest', alpha=0.5)
+        axes[2].set_title('Distance vs. Bonds')
+        fig.colorbar(im3, ax=axes[2])
+        axes[2].set_xticks(np.arange(len(atom_labels)))
+        axes[2].set_xticklabels(atom_labels, rotation=90)
+        axes[2].set_yticks(np.arange(len(atom_labels)))
+        axes[2].set_yticklabels(atom_labels)
+
+        plt.tight_layout()
+        plt.show()
+
+    # clear / need new logic
+    def detect_bonds(self, atom_types, distances):
+        covalent_radii = {'H': 0.31, 'C': 0.76, 'N': 0.71, 'O': 0.66}  # Extend as needed
+        bond_matrix = np.zeros(distances.shape, dtype=bool)
+        for i, atom1 in enumerate(atom_types):
+            for j, atom2 in enumerate(atom_types):
+                if i < j:
+                    max_bond_dist = covalent_radii[atom1] + covalent_radii[atom2] + 0.4  # tolerance
+                    if distances[i, j] < max_bond_dist:
+                        bond_matrix[i, j] = bond_matrix[j, i] = True
+        return bond_matrix
+
+    # clear / need new logic
+    def detect_noncovalent_interactions(self, atom_types, distances):
+        noncovalent_interactions = []
+        for i, atom1 in enumerate(atom_types):
+            for j, atom2 in enumerate(atom_types):
+                if i < j:
+                    if distances[i, j] > 2.5 and distances[i, j] < 4.0:  # Rough range for non-covalent interaction
+                        interaction_type = "hydrogen_bond" if "H" in [atom1, atom2] else "vdW"
+                        noncovalent_interactions.append((i, j, interaction_type))
+        return noncovalent_interactions
+    
+    # clear / need new logic
+    def plot_noncov_distance_map(self, noncovalent_interactions, atom_labels):
+        # Determine the matrix size
+        n = max(max(i[0], i[1]) for i in noncovalent_interactions) + 1
+
+        interaction_matrix = np.zeros((n, n), dtype=int)
+        vdw_matrix = np.zeros((n, n), dtype=bool)
+        hb_matrix = np.zeros((n, n), dtype=bool)
+
+        for i, j, interaction in noncovalent_interactions:
+            interaction_matrix[i, j] = 1  # 1 for any interaction
+            if interaction == 'vdW':
+                vdw_matrix[i, j] = True
+            elif interaction == 'hydrogen_bond':
+                hb_matrix[i, j] = True
+
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+        im1 = axes[0].imshow(vdw_matrix, cmap='Blues', interpolation='nearest')
+        axes[0].set_title('vdW Interactions')
+        fig.colorbar(im1, ax=axes[0])
+        axes[0].set_xticks(np.arange(len(atom_labels)))
+        axes[0].set_xticklabels(atom_labels, rotation=90)
+        axes[0].set_yticks(np.arange(len(atom_labels)))
+        axes[0].set_yticklabels(atom_labels)
+
+        im2 = axes[1].imshow(hb_matrix, cmap='Reds', interpolation='nearest')
+        axes[1].set_title('Hydrogen Bond Interactions')
+        fig.colorbar(im2, ax=axes[1])
+        axes[1].set_xticks(np.arange(len(atom_labels)))
+        axes[1].set_xticklabels(atom_labels, rotation=90)
+        axes[1].set_yticks(np.arange(len(atom_labels)))
+        axes[1].set_yticklabels(atom_labels)
+
+        axes[2].imshow(vdw_matrix, cmap='Blues', interpolation='nearest')
+        im3 = axes[2].imshow(hb_matrix, cmap='Reds', interpolation='nearest', alpha=0.5)
+        axes[2].set_title('Full NONCOV interactions')
+        fig.colorbar(im3, ax=axes[2])
+        axes[2].set_xticks(np.arange(len(atom_labels)))
+        axes[2].set_xticklabels(atom_labels, rotation=90)
+        axes[2].set_yticks(np.arange(len(atom_labels)))
+        axes[2].set_yticklabels(atom_labels)
+
+        plt.tight_layout()
+        plt.show()
+
+    def build_molecular_graph(self, atom_types, coordinates, covalent_bonds, noncovalent_interactions):
+        mol_graph = MolecularGraph()
+
+        # Add atoms to the graph
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            mol_graph.add_atom(i, atom_type, position)
+
+        # Add covalent bonds
+        for i in range(len(atom_types)):
+            for j in range(i + 1, len(atom_types)):
+                if covalent_bonds[i, j]:
+                    mol_graph.add_bond(i, j, bond_type="covalent")
+
+        # Add non-covalent interactions
+        for i, j, interaction_type in noncovalent_interactions:
+            mol_graph.add_bond(i, j, bond_type=interaction_type)
+
+        return mol_graph
+    
+    def draw_subplots(self, covalent_bonds_graph, intramolecular_graph, intermolecular_graph, coordinates):
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        
+        # Draw Covalent Bonds Graph
+        self._draw_graph(covalent_bonds_graph, coordinates, ax=axes[0], title='Covalent Bonds')
+
+        # Draw Intramolecular Contacts Graph
+        self._draw_graph(intramolecular_graph, coordinates, ax=axes[1], title='Intramolecular Contacts')
+
+        # Draw Intermolecular Contacts Graph
+        self._draw_graph(intermolecular_graph, coordinates, ax=axes[2], title='Intermolecular Contacts')
+        
+        plt.tight_layout()
+        plt.show()
+
+    def _draw_graph(self, graph, coordinates, ax, title):
+        # Use the original coordinates as the positions for the nodes
+        pos = {i: (coordinates[i][0], coordinates[i][1]) for i in graph.nodes()}  # X, Y coordinates
+
+        labels = nx.get_node_attributes(graph, 'atom_type')
+        bond_types = nx.get_edge_attributes(graph, 'bond_type')
+        edge_colors = ["blue" if bond == "noncovalent" else "red" for bond in bond_types.values()]
+
+        nx.draw(graph, pos, ax=ax, labels=labels, with_labels=True, node_size=500, node_color="skyblue", edge_color=edge_colors, font_size=8)
+        ax.set_title(title)
+
+    def build_covalent_bonds_graph(self, atom_types, coordinates, covalent_bonds):
+        graph = nx.Graph()
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            graph.add_node(i, atom_type=atom_type, coordinate=position)
+        for i in range(len(atom_types)):
+            for j in range(i + 1, len(atom_types)):
+                if covalent_bonds[i, j]:
+                    graph.add_edge(i, j, bond_type="covalent")
+        return graph
+
+    def build_intramolecular_graph(self, atom_types, coordinates, covalent_bonds, noncovalent_interactions):
+        graph = nx.Graph()
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            graph.add_node(i, atom_type=atom_type, coordinate=position)
+        for i, j, interaction_type in noncovalent_interactions:
+            if covalent_bonds[i, j]:  # Intramolecular if there's a covalent bond
+                graph.add_edge(i, j, bond_type="intramolecular")
+        return graph
+
+    def build_intermolecular_graph(self, atom_types, coordinates, noncovalent_interactions):
+        graph = nx.Graph()
+        for i, (atom_type, position) in enumerate(zip(atom_types, coordinates)):
+            graph.add_node(i, atom_type=atom_type, coordinate=position)
+        for i, j, interaction_type in noncovalent_interactions:
+            if interaction_type != "intramolecular":  # Intermolecular if not intramolecular
+                graph.add_edge(i, j, bond_type="intermolecular")
+        return graph
+
 
 
 # ------------------------------------------------------------------------------
