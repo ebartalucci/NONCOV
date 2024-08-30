@@ -709,23 +709,3 @@ class NMRFunctions:
         print(f'Equivalent Euler angles are: {euler_equivalents}')
 
         return euler_equivalents
-
-        
-
-
-# Test zone
-xx =-5.9766
-xy =-65.5206
-xz =-9.5073
-yx =-60.3020
-yy =-23.0881
-yz =-28.2399
-zx =-10.8928
-zy =-25.2372
-zz =56.277
-
-shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry = NMRFunctions.diagonalize_tensor(xx, xy, xz, yx, yy, yz, zx, zy, zz)
-mode = 'PZYZ'
-order = 1
-alpha, beta, gamma = NMRFunctions.tensor_to_euler(shielding_tensor, eigenvals, eigenvecs, symmetry, 'PZYZ')
-

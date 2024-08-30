@@ -33,48 +33,53 @@ class NONCOVToolbox:
     """
     Parent class, print headers and acknowledgments
     """
+    _printed = False
+
     def __init__(self):
-        # Print header and version
-        print("\n\n          #################################################")
-        print("          | --------------------------------------------- |")
-        print("          |         (NC)^2I.py: NMR Calculations          |")
-        print("          |         for Noncovalent Interactions          |")
-        print("          | --------------------------------------------- |")
-        print("          |           Introducing: NONCOVToolbox          |")
-        print("          |                       -                       |")
-        print("          |     A collection of functions for working     |")
-        print("          |         with calculated NMR parameters        |")
-        print("          |                                               |")
-        print("          |               Ettore Bartalucci               |")
-        print("          |     Max Planck Institute CEC & RWTH Aachen    |")
-        print("          |            Worringerweg 2, Germany            |")
-        print("          |                                               |")
-        print("          #################################################\n")
-        
-       
-        # Print versions
-        version = '0.0.1'
-        print("Stable version: {}\n\n".format(version))
-        print("Working python version:")
-        print(sys.version)
-        print('\n')
+        if not NONCOVToolbox._printed:
 
-        # Print acknowledgments
-        try:
-            # acknowledgments.txt file is in the same directory as noncov.py
-            file_dir = os.path.dirname(os.path.abspath(__file__))
-            ack_file_path = os.path.join(file_dir, 'acknowledgments.txt')
+            # Print header and version
+            print("\n\n          #################################################")
+            print("          | --------------------------------------------- |")
+            print("          |         (NC)^2I.py: NMR Calculations          |")
+            print("          |         for Noncovalent Interactions          |")
+            print("          | --------------------------------------------- |")
+            print("          |           Introducing: NONCOVToolbox          |")
+            print("          |                       -                       |")
+            print("          |     A collection of functions for working     |")
+            print("          |         with calculated NMR parameters        |")
+            print("          |                                               |")
+            print("          |               Ettore Bartalucci               |")
+            print("          |     Max Planck Institute CEC & RWTH Aachen    |")
+            print("          |            Worringerweg 2, Germany            |")
+            print("          |                                               |")
+            print("          #################################################\n")
+                
+            # Print versions
+            version = '0.0.1'
+            print("Stable version: {}\n\n".format(version))
+            print("Working python version:")
+            print(sys.version)
+            print('\n')
 
-            with open(ack_file_path, 'r') as f:
-                acknowledgments = f.read()
-                print(acknowledgments)
-        
-        except FileNotFoundError:
-            print(f"Acknowledgments file not found at {ack_file_path}. Please ensure 'acknowledgments.txt' is in the correct directory.")
-            sys.exit(1)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            sys.exit(1)
+            # Print acknowledgments
+            try:
+                # acknowledgments.txt file is in the same directory as noncov.py
+                file_dir = os.path.dirname(os.path.abspath(__file__))
+                ack_file_path = os.path.join(file_dir, 'acknowledgments.txt')
+
+                with open(ack_file_path, 'r') as f:
+                    acknowledgments = f.read()
+                    print(acknowledgments)
+            
+            except FileNotFoundError:
+                print(f"Acknowledgments file not found at {ack_file_path}. Please ensure 'acknowledgments.txt' is in the correct directory.")
+                sys.exit(1)
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                sys.exit(1)
+
+        _printed = True
 
 # ------------------------------------------------------------------------------
 #                           BIOMOLECULAR APPLICATIONS                          #
@@ -890,15 +895,24 @@ class OrcaAnalysis(NONCOVToolbox):
     Class for data analysis of ORCA outputs. Only works for the EPR/NMR module outputs.
     """
     def __init__(self):
-        super().__init__('OrcaAnalysis')
+        super().__init__()
+
+    def convert_path(self, output_file):
+        """
+        Read the output (.mpi8.out) file from an ORCA calculation and convert to readable string
+        :param output_file: output file from orca in the form .mpi8.out
+        """
+        converted_path = output_file.strip('\"').replace("\\", "/")
+        print(f"Normalized path using os.path: {converted_path}")
+    
+        return converted_path
            
-    # SECTION 1: READ ORCA OUTPUT FILES AND COUNT NUMBER OF JOBS
     def count_jobs_number(self, output_file):
         """
         Read the output (.mpi8.out) file from an ORCA calculation and count how many jobs have been run.
         :param output_file: output file from orca in the form .mpi8.out
         """
-        with open(output_file, 'r') as f:
+        with open(output_file, 'r', encoding='utf-8') as f:
             # Count number of jobs in output file
             lines = f.readlines()
             count = 0
@@ -907,7 +921,6 @@ class OrcaAnalysis(NONCOVToolbox):
                     count += 1
             return count
 
-    # SECTION 2: READ ORCA OUTPUT FILES AND EXTRACT LEVEL OF THEORY
     def extract_level_of_theory(self, output_file):
         """
         Read the output (.mpi8.out) file from an ORCA calculation and extract level of theory.
@@ -919,12 +932,13 @@ class OrcaAnalysis(NONCOVToolbox):
                 
                 # Search for the line containing "# Level of theory"
                 for i, line in enumerate(lines):
-                    if "# Level of theory" in line:
+                    if "# Level of theory" in line or '!' in line:
                         # Extract the line immediately after it, this wont work if ppl dont use my syntax
                         level_of_theory_line = lines[i + 1].strip()
 
                         # Remove the line number from the line - do i want to keep this?
-                        level_of_theory = level_of_theory_line.replace("| 10>", "").strip()
+                        #level_of_theory = level_of_theory_line.replace("| 10>", "").strip()
+                        level_of_theory = re.sub(r'\|\d+>', "", level_of_theory_line).strip()
 
                         return level_of_theory
 
@@ -935,8 +949,7 @@ class OrcaAnalysis(NONCOVToolbox):
         except Exception as e:
             return f"An error occurred: {str(e)}"
 
-    # SECTION 3: READ ORCA OUTPUT FILES AND SPLIT FOR NUMBER OF JOBS
-    def split_orca_output(self, output_file):
+    def split_orca_output(self, scratch_dir, output_file):
         """
         This function splits the huge ORCA multi-job file into individual job files.
         Then sews it back with the initial output lines from ORCA so that the files can
@@ -945,7 +958,7 @@ class OrcaAnalysis(NONCOVToolbox):
         """
         if not os.path.isfile(output_file):
             print(f"Error in OrcaAnalysis: ORCA output file '{output_file}' not found, please define.")
-            return
+            return 
 
         # Make use of RegEx for matching JOB lines
         job_matching = re.compile(r'\$+\s*JOB\s+NUMBER\s+(\d+) \$+')
@@ -962,7 +975,17 @@ class OrcaAnalysis(NONCOVToolbox):
                 if match:
                     # if match is found, write to file
                     if current_job_n is not None:
-                        output_file_path = f'scratch/OrcaAnalysis/split_orca_output/splitted_orca_job{current_job_n}.out'
+                        # Ensure you have the folder to save the files
+                        output_folder = f'OrcaAnalysis/split_orca_output/splitted_orca_job{current_job_n}.out'
+                        output_file_path = os.path.join(scratch_dir, output_folder)
+                        
+                        # If doesnt exist, create
+                        output_dir = os.path.dirname(output_file_path)
+                        if not os.path.exists(output_dir):
+                            os.makedirs(output_dir)
+
+                        print(f'Output file path is {output_file_path}')
+                        
                         with open(output_file_path, 'w') as out:
                             out.writelines(initial_content + current_job_content) # initial orca info + job specific info
                         
@@ -975,7 +998,10 @@ class OrcaAnalysis(NONCOVToolbox):
 
             # write last job to file
             if current_job_n is not None:
-                output_file_path = f'scratch/OrcaAnalysis/split_orca_output/splitted_orca_job{current_job_n}.out'
+                # Ensure you have the folder to save the files
+                output_folder = f'OrcaAnalysis/split_orca_output/splitted_orca_job{current_job_n}.out'
+                output_file_path = os.path.join(scratch_dir, output_folder)
+                
                 with open(output_file_path, 'w') as out:
                     out.writelines(initial_content + current_job_content)
                 
@@ -983,7 +1009,6 @@ class OrcaAnalysis(NONCOVToolbox):
 
         print(f'ORCA output has been split into {current_job_n} sub files for further analysis')
 
-    # This adds the initial content necessary for avogadro visualization to each splitted file
     def extract_initial_output_content(self, output_file, job_matching):
         """
         Add the initial ORCA file until JOB NUMBER to each file to be read by Avogadro.
@@ -999,32 +1024,32 @@ class OrcaAnalysis(NONCOVToolbox):
                 initial_content.append(line) # and append to file
         return initial_content
     
-    # SECTION 4: NONCOVALENT INTERACTION DISTANCE CLASSIFIER
     def set_noncov_interactions(self):
         # Display possible options to the user
         # Adjust based on the number of noncovalent interactions you want
-        print("NONCOV effective distances options:")
+        print("Plot NONCOV effective distances options:")
         print("1. Cation-pi")
         print("2. Anion-pi")
         print("3. pi-pi")
         print("4. H-bond")
         print("5. Polar-pi")
         print("6. n-pi*")
+        print("7. London dispersion")
         print("Press Enter to skip")
 
         # Get user input and validate
         while True:
-            user_input = input("Enter your choice of NONCOV type please (1-6): ")
+            user_input = input("Enter your choice of NONCOV type please (1-7): ")
             
             if user_input == "": # skip the settings of noncov interaction distance
                 return None
             
             try:
                 user_choice = int(user_input)
-                if 1 <= user_choice <= 6:
+                if 1 <= user_choice <= 7:
                     return user_choice
                 else:
-                    print("Invalid choice. Please enter a number between 1 and 6.")
+                    print("Invalid choice. Please enter a number between 1 and 7.")
             except ValueError:
                 print("Invalid input. Please enter a valid number.")
 
@@ -1046,6 +1071,8 @@ class OrcaAnalysis(NONCOVToolbox):
             return 1, 5
         elif user_choice == 6: # n-pi* interaction
             return 1, 5
+        elif user_choice == 7: # London dispersion interaction
+            return 1, 5
         
     def run_boundary_checks(self):
         noncov_type = self.set_noncov_interactions()
@@ -1057,8 +1084,7 @@ class OrcaAnalysis(NONCOVToolbox):
         else:
             print(f"Selected boundary distance values / Å: min={min_distance_value}, max={max_distance_value}")
 
-    # SECTION 5: EXTRACT NMR DATA FROM OUTPUT FILE
-    def extract_csa_data(splitted_output_file):
+    def extract_csa_data(self, splitted_output_file):
         """
         Load the splitted orca output files and read total CSA tensor and its components
         Input:
@@ -1232,114 +1258,12 @@ class OrcaAnalysis(NONCOVToolbox):
     # ----------------------------------------------------------------#
 
 
-    # -------------------------- start --------------------------------#
     # ----------------------------------------------------------------#
     # SECTION 9: EXTRACT INITIAL DISTANCE BETWEEN NUCLEAR PAIRS FOR DISTANCE PLOTS
     # compute the displacement as a difference between the coordinates of the first point and the
     # coordinates of the second point.
 
 
-    # SECTION 10: PLOTTING NMR DATA (III) IN PAS: DIAMAGNETIC, PARAMAGNETIC, TOTAL CSA TENSOR
-    def extract_csa_tensor_in_pas(splitted_output_file):
-        """
-        Load the splitted orca output files and read diagonal components of diamagnetic, paramagnetic and total CSA tensor
-        Input:
-        splitted_output_file: orca output file splitted by number of jobs
-        Output:
-        :sigma_dia: diagonal diamagnetic shielding tensor components in the PAS  
-        :sigma_para: diagonal paramagnetic shielding tensor components in the PAS  
-        :sigma_tot: diagonal total shielding tensor components in the PAS - used in the tensor ellipsoid
-        Convention:
-        sigma_11 < sigma_22 < sigma_33 in [ppm]  
-        Diagonalization:
-        given by orca automatically as sT*s
-        """
-
-        # Dictionaries to store diamagnetic tensor components for each nucleus type
-        sigma_dia = {}  
-
-        # Dictionaries to store paramagnetic tensor components for each nucleus type
-        sigma_para = {}  
-
-        # Dictionaries to store total tensor components for each nucleus type
-        sigma_tot = {}  
-
-        # Read shielding tensor from file - continue from here
-        try:
-            with open(splitted_output_file, 'r') as f:
-                lines = f.readlines()
-
-            # nucleus marker
-            current_nucleus = None
-
-            # marker for shielding search
-            start_search = False
-
-            for i, line in enumerate(lines):
-                # Start searching after encountering the CHEMICAL SHIFTS flag
-                if 'CHEMICAL SHIFTS' in line:
-                    start_search = True
-                    continue
-
-                if start_search:
-                    line = line.strip()
-                    if line.startswith('Nucleus'):
-                        if current_nucleus is not None:
-                            sigma_dia[current_nucleus] = current_dia_shielding
-                            sigma_para[current_nucleus] = current_para_shielding
-                            sigma_tot[current_nucleus] = current_tot_shielding
-                        # add the nucleus information to file
-                        nucleus_info = line.split()[1:]
-                        current_nucleus = f"Nucleus {' '.join(nucleus_info)}"
-                        current_dia_shielding = []
-                        current_para_shielding = []
-                        current_tot_shielding = []
-
-                    # Extract the various tensor components here
-                    elif line.startswith('sDSO'):
-                        try:
-                            dia_tensor_components = [float(x) for x in line.split()[1:4]]
-                            current_dia_shielding.append(dia_tensor_components)
-                        except (ValueError, IndexError):
-                            #print('Error encountered when extracting sDSO diamagnetic tensor components')
-                            continue
-
-                    elif line.startswith('sPSO'):
-                        try:
-                            para_tensor_components = [float(x) for x in line.split()[1:4]]
-                            current_para_shielding.append(para_tensor_components)
-                        except (ValueError, IndexError):
-                            #print('Error encountered when extracting sPSO paramagnetic tensor components')
-                            continue
-
-                    elif line.startswith('Total'):
-                        try:
-                            tot_tensor_components = [float(x) for x in line.split()[1:4]]
-                            current_tot_shielding.append(tot_tensor_components)
-                        except (ValueError, IndexError):
-                            #print('Error encountered when extracting total shielding tensor components')
-                            continue
-                
-                # stop extraction at the end of the tensor nmr block of the output
-                if 'CHEMICAL SHIELDING SUMMARY (ppm)' in line:
-                    break
-
-            # Store last nucleus data
-            if current_nucleus is not None:
-                sigma_dia[current_nucleus] = current_dia_shielding
-                sigma_para[current_nucleus] = current_para_shielding
-                sigma_tot[current_nucleus] = current_tot_shielding 
-            
-        except FileNotFoundError:
-            print(f"File '{splitted_output_file}' not found.")
-            return {}, {}, {}, []
-
-        # Extract all the nuclear identities in xyz file
-        nuc_identity = list(sigma_tot.keys())
-
-        return sigma_dia, sigma_para, sigma_tot, nuc_identity
-
-    # SECTION 11: PLOT MOLECULAR FRAME
     def plot_3d_molecule(molecule_path, sizes=None):
         """
         Load and plot the molecular coordinates in 3D and display them according to standard CPK convention.
