@@ -3,14 +3,14 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  24.08.2024                 #
+#               Last:  01.09.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.0.1                       #
 #                                                 #
 ###################################################
 
-# This work is an attempt to write a script running on minimal import packages
+# Attempt to run on minimal import packages
 
 # Import modules 
 import os
@@ -27,21 +27,31 @@ from scipy.spatial.distance import pdist, squareform
 import re  # RegEx
 import nmrglue as ng # NMRglue module for handling NMR spectra 
 import pandas as pd
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from scipy.spatial.transform import Rotation as R
 
 
 class NONCOVToolbox:
     """
-    Parent class, print headers and acknowledgments
+    The NONCOV toolbox
+    """
+    def __init__(self):
+        pass
+
+class NONCOVHeader:
+    """
+    Print headers and acknowledgments
     """
     _printed = False
 
-    def __init__(self):
-        if not NONCOVToolbox._printed:
+    @staticmethod
+    def print_header():
+        if not NONCOVHeader._printed:
 
             # Print header and version
             print("\n\n          #################################################")
             print("          | --------------------------------------------- |")
-            print("          |         (NC)^2I.py: NMR Calculations          |")
+            print("          |                NMR Calculations               |")
             print("          |         for Noncovalent Interactions          |")
             print("          | --------------------------------------------- |")
             print("          |           Introducing: NONCOVToolbox          |")
@@ -79,7 +89,7 @@ class NONCOVToolbox:
                 print(f"An error occurred: {e}")
                 sys.exit(1)
 
-        _printed = True
+            NONCOVHeader._printed = True
 
 # ------------------------------------------------------------------------------
 #                           BIOMOLECULAR APPLICATIONS                          #
@@ -89,11 +99,13 @@ class AminoStat(NONCOVToolbox):
     Collection of useful functions for working with proteins and sequences.
     """
     def __init__(self):
-        super().__init__('AminoStat')
+        super().__init__()
 
     def space_prot_seq(self, prot_seq, spaced_prot_seq):
         """
         Take a sequence and add a space between each letter
+        :param prot_seq: original protein sequence from Uniprot 
+        :param spaced_prot_seq: path to where you want to write it
         """
         try:
             with open(prot_seq, 'r') as f:
@@ -114,6 +126,8 @@ class AminoStat(NONCOVToolbox):
     def count_amino_acids(self, prot_seq, count_file):
         """
         Take spaced sequence and count how many of each amino acids you have
+        :param prot_seq: sequence with spacings
+        :param count_file: path to where you want to save the count file
         """
         try:
             with open(prot_seq, 'r') as f:
@@ -140,6 +154,8 @@ class AminoStat(NONCOVToolbox):
     def plot_amino_acid_statistics(self, count_file, plot_file):
         """
         Take the count of the amino acids and plot the histogram of the distribution
+        :param count_file: file containing the amino acids count
+        :param plot_file: path to where you want the plot to be saved
         """
         try:
             amino_acid_counts = {}
@@ -212,7 +228,7 @@ class NMRFunctions(NONCOVToolbox):
     Collection of useful functions for working with NMR parameters.
     """
     def __init__(self):
-        super().__init__('NMRFunctions')
+        super().__init__()
 
     # 3x3 Matrix diagonalization and PAS shielding tensor ordering in Mehring and Haberlen conventions
     def diagonalize_tensor(self, sxx, sxy, sxz, syx, syy, syz, szx, szy, szz):
@@ -220,21 +236,20 @@ class NMRFunctions(NONCOVToolbox):
         Take NMR tensor elements as input and perform various operations, including diagonalization and ordering according to Mehring and Haberlen formalisms.
         Input
         :param sxx, sxy, sxz, syx, syy, syz, szx, szy, szz: individual tensor components for a 3x3 chemical shielding matrix
+        
         Output
-        :param diagonal_mehring: full diagonalized matrix in principal axis system according to sigma_11 < sigma_22 < sigma_33
-        :param sigma_11: individual component
-        :param sigma_22: individual component
-        :param sigma_33: individual component
-
-        :param diagonal_haberlen: full diagonalized matrix in principal axis system according to |sigma_yy - sigma_iso| < |sigma_xx - sigma_iso| < |sigma_zz - sigma_iso|
-        :param sigma_XX: individual component
-        :param sigma_YY: individual component
-        :param sigma_ZZ: individual component
+        :param shielding_tensor: original shielding tensor in matrix format
+        :param diagonal_mehring: shielding tensor in PAS according to Mehring order
+        :param diagonal_haberlen: shielding tensor in PAS according to Haberlen order
+        :param eigenvals: individual component
+        :param s_iso: isotropic chemical shift
+        :param eigenvecs: full diagonalized matrix in principal axis system according to |sigma_yy - sigma_iso| < |sigma_xx - sigma_iso| < |sigma_zz - sigma_iso|
+        :param symmetry: individual component
         """
 
         # Notify user which module has been called
         print("# -------------------------------------------------- #")
-        print("# MATRIX DIAGONALIZATION FUNCTION HAS BEEN REQUESTED #")
+        print("# TENSOR DIAGONALIZATION FUNCTION HAS BEEN REQUESTED #")
         print(f'\n')
                 
         # Initialize shielding tensor matrix
@@ -247,27 +262,30 @@ class NMRFunctions(NONCOVToolbox):
         print('Proceeding to transposing...\n')
 
         # Transpose matrix
-        transposed = np.transpose(shielding_tensor)
+        transposed = shielding_tensor.T
         print(f'Transposed matrix is: \n{transposed}')
         print('Proceeding to symmetrization...\n')
 
         # Symmetrize tensor
-        shielding_tensor = (shielding_tensor + transposed) / 2
-        print(f'Symmetric tensor is: \n{shielding_tensor}')
+        sym_shielding_tensor = NMRFunctions.symmetrize_tensor(shielding_tensor)
+        antisym_shielding_tensor = NMRFunctions.antisymmetrize_tensor(shielding_tensor)
+        print(f'Symmetric tensor is: \n{sym_shielding_tensor}\n')
+        print(f'Antisymmetric tensor is. \n{antisym_shielding_tensor}\n')
+        print('Since antisymmetric part does not contribute to observable, skipping...\n')
         print('Proceeding to diagonalization...\n')
 
         # Calculate eigenvalues and vectors 
         eigenvals, eigenvecs = np.linalg.eig(shielding_tensor)
-        eigenvals = eigenvals.round(5) # round them up
-        eigenvecs = eigenvecs.round(5) # round them up
-        print(f'Eigenvalues are: {eigenvals}, Eigenvectors are: \n{eigenvecs}')
+        eigenvals = eigenvals.round(2) # round them up
+        eigenvecs = eigenvecs.round(2) # round them up
+        print(f'Eigenvalues are: {eigenvals}, Eigenvectors are: \n{eigenvecs}\n')
         print('Proceeding to ordering eigenvalues and eigenvectors...\n')
 
         # Sort eigenvalues and eigenvectors based on magnitude of eigenvalues
         idx = np.argsort(np.abs(eigenvals))
         eigenvals_ordered = eigenvals[idx]
         eigenvecs_ordered = eigenvecs[:, idx]
-        print(f'Magnitude-based ordering of eigenvalues is: {eigenvals_ordered}, and of eigenvectors is: \n{eigenvecs_ordered}.')
+        print(f'Magnitude-based ordering of eigenvalues is: \n{eigenvals_ordered} \n and of eigenvectors is: \n{eigenvecs_ordered}.')
         print('Proceeding to diagonalization...\n')
 
         # Compute diagonal matrix, define eigenvector columns as variables and preforme matrix multiplication 
@@ -283,11 +301,11 @@ class NMRFunctions(NONCOVToolbox):
 
         # Reorder matrix according to Haberlen convention
         diagonal_haberlen = np.argsort(np.diag(diagonal) - s_iso)
+        diagonal_haberlen = np.diag(diagonal)[diagonal_haberlen]
         sigma_XX = diagonal_haberlen[0]
         sigma_YY = diagonal_haberlen[1]
         sigma_ZZ = diagonal_haberlen[2]
-        diagonal_haberlen = diagonal[diagonal_haberlen]
-        # diagonal_haberlen = np.diag(np.diag(diagonal)[diagonal_haberlen])
+        diagonal_haberlen = np.diag(diagonal_haberlen)
         print(f'Diagonal tensor in Haberlen order is: \n{diagonal_haberlen}\n')
         print(f'''where:\n \u03C3_XX:{sigma_XX} \n \u03C3_YY:{sigma_YY} \n \u03C3_ZZ:{sigma_ZZ}''')
         print('Proceeding to Mehring ordering...\n')
@@ -299,28 +317,59 @@ class NMRFunctions(NONCOVToolbox):
         sigma_33 = diagonal_mehring[2]
         diagonal_mehring = np.diag(diagonal_mehring)
         print(f'Diagonal tensor in Mehring order is: \n{diagonal_mehring}\n')
-        print(f'''where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33} \n''')
-        print('Proceeding to extract tensor symmetry from eigenvalues...\n')
+        print(f'where:\n \u03C3_11:{sigma_11} \n \u03C3_22:{sigma_22} \n \u03C3_33:{sigma_33} \n')
+        print('Proceeding to shielding tensor symmetry analysis...\n')
 
         # Extract symmetry of the tensor from its eigenvalues
-        symmetry = len(eigenvals) - len(np.unique(np.round(eigenvals,7))) #check if here maybe i dont need the asymmetry parameter
-        print(f'Symmetry of the tensor is: {symmetry}\n')
-        print('Proceeding to Euler angles extraction from eigenvectors...\n')
+        unique_eigenvals = np.unique(np.round(eigenvals,7))
+        symmetry = len(eigenvals) - len(unique_eigenvals) 
+        print(f'Symmetry of the tensor based on eigenvals count is: {symmetry}\n')
+        if symmetry == 0:
+            print('which means that')
+        else:
+            print('which means that')
+
+        if len(unique_eigenvals) == 1:
+            print("The tensor is completely isotropic (all eigenvalues are the same).\n")
+        elif len(unique_eigenvals) < len(eigenvals):
+            print("The tensor has some symmetry (some eigenvalues are repeated).\n")
+        else:
+            print("The tensor has no obvious eigenvalue symmetry.\n")
+
+        # Additional symmetry checks for shielding tensor
+        is_symmetric = np.allclose(shielding_tensor, shielding_tensor.T) 
+        if is_symmetric:
+            print("The tensor is symmetric (S = S^T).\n")
+        else:
+            print("The tensor is not symmetric (S != S^T).\n")
+
+        print('Checking for rotational symmetry:\n')
+        for i, vec in enumerate(eigenvecs.T):
+            print(f'Eigenvector row {i + 1}: {vec}')
+        # 180 degrees rotation
+        rotated_shielding_tensor = np.rot90(shielding_tensor, 2)
+        print(f'180 degrees rotation results in the tensor: \n{rotated_shielding_tensor}\n')
+        is_rotationally_symmetric = np.array_equal(shielding_tensor, rotated_shielding_tensor)
+        print(f'Rotational symmetry is: \n{is_rotationally_symmetric}\n')
+        print('Proceeding...\n')
+
+        print('Call tensor_to_euler for Euler angles extraction from eigenvectors...\n')
 
         print("# -------------------------------------------------- #")
 
-        return shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
+        return shielding_tensor, s_iso, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
     
     # Backcalculate Euler angles from eigenvector matrix
-    def tensor_to_euler(self, symmetric_tensor, eigenvals, eigenvecs, symmetry, rotation_mode): 
+    def tensor_to_euler(self, shielding_tensor, eigenvals, eigenvecs, symmetry, rotation_mode, order): 
         """
         Take eigenvectors from diagonalization step and back-infere Euler angles
         Input
         :param symmetric_tensor: 3x3 original molecular frame tensor symmetrized
-        :param eigenvals: eigenvalues from diagonalized molecular frame tensor
-        :param eigenvecs: 3x3 (rotation) matrix of eigenvectors
-        :param symmetry: symmetry parameter of the tensor
+        :param eigenvals: eigenvalues
+        :param eigenvecs: eigenvectors
+        :param symmetry: tensor symmetry computed while diagonalization
         :param rotation_mode: AZYZ, PZYZ, AZXZ, PZXZ
+        :param order: Ascending, Descending, Absascending, None
         Output
         :param alpha
         :param beta
@@ -337,8 +386,19 @@ class NMRFunctions(NONCOVToolbox):
         print(f'Rotation matrix is: \n{R}\n')
 
         print(f'Eigenvalues are: {eigenvals}')
+        
+        print(f'Shielding tensor is: \n{shielding_tensor}\n')
 
-        print(f'Symmetric tensor is: \n{symmetric_tensor}\n')
+        symmetric_tensor = NMRFunctions.symmetrize_tensor(shielding_tensor)
+
+        print(f'Shielding tensor after symmetrization is: \n{symmetric_tensor}\n')
+
+        eigenvals, eigenvecs = NMRFunctions.sort_eigenvalues(eigenvals, eigenvecs, order)
+        print(f'Sorted eigenvalues are: {eigenvals}\n')
+        print(f'According to the chosen orde: {order}\n')
+
+        tensor_pas = np.diag(eigenvals)
+        print(f'Shielding tensor in PAS is: \n{tensor_pas}\n')
 
         # ---------------------------------------------------------------------------------------------------
         # Get Euler angles based on rotation mode
@@ -356,8 +416,8 @@ class NMRFunctions(NONCOVToolbox):
                 gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
 
             # Check if Euler angle extraction worked by comparing the rotated tensor with the original one
-            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')   
-            original_molecular_tensor = eigenvecs * diagonal_mehring * np.linalg.inv(eigenvecs) 
+            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(tensor_pas, alpha, beta, gamma, rotation_mode)   
+            original_molecular_tensor = R @ tensor_pas @ np.linalg.inv(R) 
 
             # Check if any eigenvector value is negative by comparing the two matrices
             if np.array_equal(np.round(molecular_tensor,3), np.round(original_molecular_tensor,3)):
@@ -367,7 +427,7 @@ class NMRFunctions(NONCOVToolbox):
             # fix the eigenvector matrix when different
             else:
                 print('Eigenvectors values are negative, proceeding to fix rotations.')
-                eigenvecs = - eigenvecs
+                R = - R
 
                 beta = np.arccos(R[2,2]) # cos(beta) element
 
@@ -400,7 +460,7 @@ class NMRFunctions(NONCOVToolbox):
                             beta = 0
                             alpha = 0
                             
-                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ') 
+                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(tensor_pas, alpha, beta, gamma, rotation_mode) 
                         
                             # Check if any eigenvector value is negative by comparing the two matrices
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
@@ -416,7 +476,7 @@ class NMRFunctions(NONCOVToolbox):
                             beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                             alpha = 0
                             
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(tensor_pas, alpha, beta, gamma, rotation_mode)
                             
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
@@ -426,7 +486,7 @@ class NMRFunctions(NONCOVToolbox):
                                 beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
                             
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(tensor_pas, alpha, beta, gamma, rotation_mode)
                             
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
@@ -436,7 +496,7 @@ class NMRFunctions(NONCOVToolbox):
                                 beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
                             
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZYZ')
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(tensor_pas, alpha, beta, gamma, rotation_mode)
                             
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
@@ -481,148 +541,10 @@ class NMRFunctions(NONCOVToolbox):
 
             print(f'Original molecular tensor is: \n{original_molecular_tensor}\n')
 
-            print('Angles have been generated successfully with Active ZYZ roataion mode')
+            print(f'Angles have been generated successfully with Active ZYZ roataion mode and are in units of radians \u03B1 = {alpha}, \u03B2 = {beta}, \u03B3 = {gamma}')
         
         # ---------------------------------------------------------------------------------------------------
-        # Get Euler angles based on rotation mode
-        if rotation_mode == 'PZYZ':
-            print('Passive ZYZ right hand rotation requested')
-            beta = np.arccos(R[2,2]) # cos(beta) element
 
-            if R[2,2] == 1:
-                alpha = np.arccos(R[0,0])
-                gamma = 0
-                
-            else:
-                alpha = np.arctan2(R[0,2]/np.sin(beta), -R[1,2]/np.sin(beta))
-                gamma = np.arctan2(R[2,0]/np.sin(beta), R[2,1]/np.sin(beta))
-
-            # Check if Euler angle extraction worked by comparing the rotated tensor with the original one
-            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZXZ')   
-            original_molecular_tensor = eigenvecs * diagonal_mehring * np.linalg.inv(eigenvecs) 
-
-            # Check if any eigenvector value is negative by comparing the two matrices
-            if np.array_equal(np.round(molecular_tensor,3), np.round(original_molecular_tensor,3)):
-                print('Original molecular tensor and backrotated tensor are equal')
-                pass
-            
-            # fix the eigenvector matrix when different
-            else:
-                print('Eigenvectors values are negative, proceeding to fix rotations.')
-                eigenvecs = - eigenvecs
-
-                beta = np.arccos(R[2,2]) # cos(beta) element
-
-                if R[2,2] == 1: # cos(beta) != 0
-                    alpha = np.arccos(R[0,0])
-                    gamma = 0
-                    
-                else: # gimbal lock
-                    alpha = np.arctan2(R[0,2]/np.sin(beta), -R[1,2]/np.sin(beta))
-                    gamma = np.arctan2(R[2,0]/np.sin(beta), R[2,1]/np.sin(beta))
-
-            if symmetry == 1: # spherical symmetry
-                print('The tensor has spherical symmetry, angles are all zero..')
-                alpha = 0
-                beta = 0
-                gamma = 0
-
-            if symmetry == 0: 
-                print('The tensor doesnt have spherical symmetry, calculating angles..')
-                
-                if np.round(eigenvals[2], 3) == np.round(eigenvals[1], 3):
-
-                    print('The tensor is axially symmetric with yy = zz')
-
-                    if np.round(symmetric_tensor[2,0], 3) ==0 and np.round(symmetric_tensor[1,0], 3) == 0:
-                        
-                        if np.abs(np.arcsin(np.sqrt((symmetric_tensor[0,0] - eigenvals[0]) / (eigenvals[1] - eigenvals[0])))) == 0 or np.abs(np.arcsin(np.sqrt((symmetric_tensor[0,0] - eigenvals[0]) / (eigenvals[1] - eigenvals[0])))) == np.pi:
-                            
-                            gamma = np.arcsin(np.sqrt((symmetric_tensor[0,0] - eigenvals[0]) / (eigenvals[1] - eigenvals[0])))
-                            beta = 0
-                            alpha = 0
-                            
-                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'AZXZ') 
-                        
-                            # Check if any eigenvector value is negative by comparing the two matrices
-                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
-                                pass
-                            
-                            else:
-                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[0,1] - eigenvals[0]) / (eigenvals[1] - eigenvals[0])))
-                                beta = 0
-                                gamma = 0
-
-                        else:
-                            gamma = np.arcsin(np.sqrt((symmetric_tensor[0, 0] - eigenvals[0]) / (eigenvals[1] - eigenvals[0])))
-                            #beta = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) - (eigenvals[0] - eigenvals[1]) * (np.sin(gamma) ** 2)) / ((eigenvals[2] - eigenvals[1]) *)))
-                            alpha = 0
-                            
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')
-                            
-                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
-                                pass
-                            
-                            else:
-                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                                beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
-                                alpha = 0
-                            
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')
-                            
-                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
-                                pass
-                            
-                            else:
-                                gamma = np.arcsin(np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
-                                alpha = 0
-                            
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')
-                            
-                            if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
-                                pass
-                            
-                            else:
-                                gamma = np.arcsin(-np.sqrt((symmetric_tensor[1, 1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                                beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
-                                alpha = 0
-                    
-                    else:
-                        gamma = np.arcsin(np.sqrt((symmetric_tensor[1,1] - eigenvals[1]) / (eigenvals[0] - eigenvals[1])))
-                        beta = np.arctan2(-symmetric_tensor[1,2] / (np.sin(gamma) * np.cos(gamma) * (eigenvals[0] - eigenvals[1])), symmetric_tensor[0,1] / (np.sin(gamma) * np.cos(gamma) * (eigenvals[0] - eigenvals[1])))
-                        alpha = 0
-            
-            else:
-                gamma = 0
-        
-            alpha = np.mod(- gamma, 2*np.pi)
-            beta = np.mod(- beta, 2*np.pi)
-            gamma = np.mod(- alpha, 2*np.pi)
-
-            if beta > np.pi:
-                beta = 2*np.pi - beta
-                gamma = gamma - np.pi
-                gamma = np.mod(gamma, 2*np.pi)
-            
-            if beta >= np.pi/2:
-                alpha = - (alpha - np.pi)
-                alpha = np.mod(alpha, 2*np.pi)
-                beta = - (beta - np.pi)
-                beta = np.mod(beta, 2*np.pi)
-                gamma = gamma + np.pi
-                gamma = np.mod(gamma, 2*np.pi)
-
-            if alpha >= np.pi:
-                alpha = alpha - np.pi
-
-            print(f'Backrotated molecular tensor from calculated angles is: \n{molecular_tensor}\n')
-
-            print(f'Original molecular tensor is: \n{original_molecular_tensor}\n')
-            
-            print('Angles have been generated successfully with Passive ZYZ roataion mode')           
-        
-        # ---------------------------------------------------------------------------------------------------
         # Get Euler angles based on rotation mode
         if rotation_mode == 'AZXZ':
             print('Active ZXZ right hand rotation requested')
@@ -637,8 +559,8 @@ class NMRFunctions(NONCOVToolbox):
                 gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
 
             # Check if Euler angle extraction worked by comparing the rotated tensor with the original one
-            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')   
-            original_molecular_tensor = eigenvecs * diagonal_mehring * np.linalg.inv(eigenvecs) 
+            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(symmetric_tensor, alpha, beta, gamma, 'PZYZ')   
+            original_molecular_tensor = eigenvecs * symmetric_tensor * np.linalg.inv(eigenvecs) 
 
             # Check if any eigenvector value is negative by comparing the two matrices
             if np.array_equal(np.round(molecular_tensor,3), np.round(original_molecular_tensor,3)):
@@ -681,7 +603,7 @@ class NMRFunctions(NONCOVToolbox):
                             beta = 0
                             alpha = 0
                             
-                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ') 
+                            molecular_tensor =  NMRFunctions.backrotate_diagonal_tensor_with_euler(eigenvals, alpha, beta, gamma, 'PZYZ') 
                         
                             # Check if any eigenvector value is negative by comparing the two matrices
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
@@ -697,7 +619,7 @@ class NMRFunctions(NONCOVToolbox):
                             beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                             alpha = 0
                             
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(eigenvals, alpha, beta, gamma, 'PZYZ')
                             
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
@@ -707,7 +629,7 @@ class NMRFunctions(NONCOVToolbox):
                                 beta = np.arcsin(np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
                             
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(eigenvals, alpha, beta, gamma, 'PZYZ')
                             
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
@@ -717,7 +639,7 @@ class NMRFunctions(NONCOVToolbox):
                                 beta = np.arcsin(-np.sqrt((symmetric_tensor[2, 2] - eigenvals[2]) / (eigenvals[0] - eigenvals[2] + (eigenvals[1] - eigenvals[0]) * (np.sin(gamma) ** 2))))
                                 alpha = 0
                             
-                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(diagonal_mehring, alpha, beta, gamma, 'PZYZ')
+                            molecular_tensor = NMRFunctions.backrotate_diagonal_tensor_with_euler(eigenvals, alpha, beta, gamma, 'PZYZ')
                             
                             if np.array_equal(np.round(molecular_tensor,3), np.round(symmetric_tensor,3)):
                                 pass
@@ -761,20 +683,22 @@ class NMRFunctions(NONCOVToolbox):
             
             print('Angles have been generated successfully with Passive ZYZ roataion mode')           
 
+        else:
+            print('Rotation mode specified is not supported yet')
 
         # Get the angles in degrees and round up values
         alpha = np.degrees(alpha).round(2)
         beta = np.degrees(beta).round(2)
         gamma = np.degrees(gamma).round(2)
 
-        print(f'Euler angles are: \n{alpha}, {beta}, {gamma}\n')
+        print(f'Euler angles in degrees are are: \n{alpha}, {beta}, {gamma}\n')
         print("# -------------------------------------------------- #")
 
-        return alpha, beta, gamma
+        return alpha, beta, gamma, tensor_pas
             
-    
     # Define a rotation of a given tensor using Euler angles
-    def backrotate_diagonal_tensor_with_euler(self, diagonal_pas, alpha, beta, gamma, rotation_mode):
+    @staticmethod
+    def backrotate_diagonal_tensor_with_euler(diagonal_pas, alpha, beta, gamma, rotation_mode):
         '''
         Take the diagonalized PAS tensor and rotate it back to its original form using Euler angles
         Input
@@ -806,7 +730,7 @@ class NMRFunctions(NONCOVToolbox):
                             [0, 0, 1]]
                             )
             
-            R_tot = R_z1 * R_y2 * R_z3
+            R_tot = R_z1 @ R_y2 @ R_z3
 
             # invert if passive
             if rotation_mode == 'PZYZ':
@@ -814,7 +738,7 @@ class NMRFunctions(NONCOVToolbox):
                 inv_R_y2 = np.linalg.inv(R_y2)
                 inv_R_z3 = np.linalg.inv(R_z3)
 
-                R_tot = inv_R_z1 *inv_R_y2 * inv_R_z3
+                R_tot = inv_R_z1 @ inv_R_y2 @ inv_R_z3
 
         # Choose rotation modes ZXZ
         elif rotation_mode == 'AZXZ' or rotation_mode == 'PZXZ':
@@ -837,7 +761,7 @@ class NMRFunctions(NONCOVToolbox):
                             [0, 0, 1]]
                             )
             
-            R_tot = R_z1 * R_x2 * R_z3
+            R_tot = R_z1 @ R_x2 @ R_z3
 
             # invert if passive
             if rotation_mode == 'PZXZ':
@@ -845,31 +769,41 @@ class NMRFunctions(NONCOVToolbox):
                 inv_R_x2 = np.linalg.inv(R_x2)
                 inv_R_z3 = np.linalg.inv(R_z3)
                 
-                R_tot = inv_R_z1 *inv_R_x2 * inv_R_z3
+                R_tot = inv_R_z1 @ inv_R_x2 @ inv_R_z3
         
         else:
             print('The input rotation mode is wrong, please choose one of the following formats: AZYZ, PZYZ, AZXZ, PZXZ')
 
-        backrotated_tensor = R_tot * diagonal_pas * np.linalg.inv(R_tot)
+        backrotated_tensor = R_tot @ diagonal_pas @ R_tot.T
 
         return backrotated_tensor
-
     
-    # Define radius of Ovaloid for parametric plots
-    def radiusovaloid(self, sxx, syy, szz, alpha, beta, gamma, theta, phi):
-        '''
-        to check
-        '''
-        r_ov = (sxx * (np.sin(gamma) * np.sin(alpha - phi) * np.sin(theta) + np.cos(gamma) * (np.cos(theta) * np.sin(beta) - np.cos(beta) * np.cos(alpha - phi) * np.sin(theta))) ** 2
-            + syy * (np.cos(theta) * np.sin(beta) * np.sin(gamma) - (np.cos(beta) * np.cos(alpha - phi) * np.sin(gamma) + np.cos(gamma) * np.sin(alpha - phi) * np.sin(theta))) ** 2
-            + szz * (np.cos(beta) * np.cos(theta) + np.cos(alpha - phi) * np.sin(beta) * np.sin(theta)) ** 2)
+    # Symmetrize given tensor
+    @staticmethod
+    def symmetrize_tensor(tensor):
+        return (tensor + tensor.T) / 2
+
+    # Antisymmetrize given tensor
+    @staticmethod
+    def antisymmetrize_tensor(tensor):
+        return (tensor - tensor.T) / 2
+    
+    # Sort tensor eigenvalues based on given order
+    @staticmethod
+    def sort_eigenvalues(eigenvals, eigenvecs, order):
+        if order == 'Ascending':
+            indices = np.argsort(eigenvals)
+        elif order == 'Descending':
+            indices = np.argsort(eigenvals)[::-1]
+        elif order == 'Absascending':
+            indices = np.argsort(np.abs(eigenvals))
+        else:
+            indices = np.arange(len(eigenvals))
         
-        print(f'Radius of ovaloid is: {r_ov}')
-        
-        return r_ov
+        return eigenvals[indices], eigenvecs[:, indices]
     
     # Generate sets of equivalent euler angles based on AZYZ, PZYZ, AZXZ, PZXZ conventions
-    def EqEulerSet(alpha, beta, gamma):
+    def EqEulerSet(self, alpha, beta, gamma):
         """
         Generate a set of equivalent Euler angle sets.
         Input:
@@ -1190,11 +1124,8 @@ class OrcaAnalysis(NONCOVToolbox):
         return shielding_dia, shielding_para, shielding_tot, nuc_identity
     
 
-    # shielding_tensor, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
-
-
     # SECTION 6: EXTRACT SCALAR COUPLINGS IF PRESENT
-    def read_couplings(output_file): # need run only if in input ssall
+    def read_couplings(self, output_file): # need run only if in input ssall
         """
         Read the output file from an ORCA calculation. Extract scalar couplings for each nucleus
 
@@ -1264,13 +1195,22 @@ class OrcaAnalysis(NONCOVToolbox):
     # coordinates of the second point.
 
 
-    def plot_3d_molecule(molecule_path, sizes=None):
+# ------------------------------------------------------------------------------
+#                        MOLECULAR VISUALIZATION AND PLOTTING
+# ------------------------------------------------------------------------------
+class MolView(NONCOVToolbox):
+    """
+    Molecular visualization class
+    """
+    def __init__(self):
+        super().__init__()
+
+    def plot_3d_molecule(self, molecule_path, sizes=None):
         """
         Load and plot the molecular coordinates in 3D and display them according to standard CPK convention.
         Basically a very time consuming way to do what Avogadro does but worse.. Need fixing 
-        Input:
-        molecule_path: path to the xyz file to load and display
-        sizes: <optional> define atomic radii for pure graphical display, if not defined when function is called, they are taken from
+        :param molecule_path: path to the xyz file to load and display
+        :param sizes: <optional> define atomic radii for pure graphical display, if not defined when function is called, they are taken from
         default (atomic radii [pm] * 5)
         """
         # --------------------------------------------------------------------------------------------#
@@ -1329,7 +1269,6 @@ class OrcaAnalysis(NONCOVToolbox):
 
         coordinates = np.array(coordinates)
 
-        # Plot atoms in 3D space with CPK colors and atomic radial sizes as defined earlier
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
@@ -1350,8 +1289,251 @@ class OrcaAnalysis(NONCOVToolbox):
 
         plt.show()
 
+    def radiusovaloid(self, sxx, syy, szz, alpha, beta, gamma, theta, phi):
+        '''
+        to check
+        '''
+        r_ov = (sxx * (np.sin(gamma) * np.sin(alpha - phi) * np.sin(theta) + np.cos(gamma) * (np.cos(theta) * np.sin(beta) - np.cos(beta) * np.cos(alpha - phi) * np.sin(theta))) ** 2
+            + syy * (np.cos(theta) * np.sin(beta) * np.sin(gamma) - (np.cos(beta) * np.cos(alpha - phi) * np.sin(gamma) + np.cos(gamma) * np.sin(alpha - phi) * np.sin(theta))) ** 2
+            + szz * (np.cos(beta) * np.cos(theta) + np.cos(alpha - phi) * np.sin(beta) * np.sin(theta)) ** 2)
+        
+        print(f'Radius of ovaloid representation is: {r_ov}')
+        
+        return r_ov
+    
+    def plot_iso_shifts(S_tot, nuclear_identities, displacement_steps_distance, 
+                    min_distance_value, max_distance_value, scratch_dir):
+        """
+        Plots the diagonal components of the shielding tensor for each nucleus.
+        
+        :param S_tot: List of dictionaries with shielding tensor components.
+        :param nuclear_identities: List of lists of nuclear identity strings (keys).
+        :param displacement_steps_distance: List of displacement steps.
+        :param min_distance_value: Minimum distance value for shading the NONCOV effective region.
+        :param max_distance_value: Maximum distance value for shading the NONCOV effective region.
+        :param scratch_dir: Directory to save the plots.
+        """
+        # Create a folder to save the shifts plots as PDFs and JPEGs if it doesn't exist
+        shifts_figures_folder = os.path.join(scratch_dir, 'OrcaAnalysis/shifts_plot')
+        os.makedirs(shifts_figures_folder, exist_ok=True)
 
-    # SECTION 12: PLOT TENSORS ELLIPSOIDS ON MOLECULAR FRAME
+        # Plot the shielding parameters for each nucleus
+        for nucleus_list in nuclear_identities:
+            for nucleus_key in nucleus_list:
+                # Extract shielding values for the current nucleus from each dictionary
+                nucleus_values_S11 = []
+                nucleus_values_S22 = []
+                nucleus_values_S33 = []
+                nucleus_values_Siso = []
+
+                for d in S_tot:
+                    if isinstance(d, dict):
+                        tensor = d.get(nucleus_key)
+                        if tensor and len(tensor) == 3 and all(len(row) == 3 for row in tensor):
+                            nucleus_values_S11.append(tensor[0][0])
+                            nucleus_values_S22.append(tensor[1][1])
+                            nucleus_values_S33.append(tensor[2][2])
+                        else:
+                            print(f"Unexpected tensor shape for nucleus '{nucleus_key}' or data not found.")
+                    else:
+                        print(f"Unexpected type in S_tot: {type(d)}")
+
+                if len(nucleus_values_S11) == 0:
+                    print(f"No data available for nucleus '{nucleus_key}'")
+                    continue
+
+                # Calculate isotropic shielding
+                nucleus_values_Siso = [(S11 + S22 + S33) / 3 for S11, S22, S33 in zip(nucleus_values_S11, nucleus_values_S22, nucleus_values_S33)]
+
+                # Split the nucleus_key into a tuple (nucleus number, element) if needed
+                nucleus = tuple(nucleus_key.split())
+
+                # Plot the shielding values for the current nucleus
+                plt.plot(displacement_steps_distance, nucleus_values_S11, marker='o', linestyle='-', color='darkblue', label=r'$\sigma$_11')
+                plt.plot(displacement_steps_distance, nucleus_values_S22, marker='o', linestyle='-', color='orangered', label=r'$\sigma$_22')
+                plt.plot(displacement_steps_distance, nucleus_values_S33, marker='o', linestyle='-', color='gold', label=r'$\sigma$_33')
+                plt.plot(displacement_steps_distance, nucleus_values_Siso, marker='*', linestyle='-', color='magenta', label=r'$\sigma$_iso')
+
+                # Highlight the NONCOV effective region
+                plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
+                
+                # Set labels and title
+                plt.xlabel('Displacement from initial geometry / Å')
+                plt.ylabel('Shielding / ppm')
+                plt.title(f'Nucleus {nucleus[1]} {nucleus[2]}')
+                
+                # Display legend
+                plt.legend(loc='best')
+                
+                # Save the plot as a PDF in the output folder
+                pdf_filename = os.path.join(shifts_figures_folder, f'nucleus_{nucleus[1]}_{nucleus[2]}.pdf')
+                plt.savefig(pdf_filename, bbox_inches='tight')
+
+                # Save the plot as a JPEG in the output folder
+                jpg_filename = os.path.join(shifts_figures_folder, f'nucleus_{nucleus[1]}_{nucleus[2]}.jpg')
+                plt.savefig(jpg_filename, bbox_inches='tight')
+                
+                # Show the plot (optional, can be commented out if you don't want to display the plots)
+                #plt.show()
+
+                # Clear the current figure for the next iteration
+                plt.clf()   
+
+    def plot_tensor_shielding(S_dia, S_para, S_tot, nuclear_identities, 
+                            displacement_steps_distance, min_distance_value, max_distance_value, 
+                            scratch_dir, iteration):
+        """
+        Plots tensor shielding values (diamagnetic, paramagnetic, and total) for each nucleus.
+
+        :param S_dia: List of dictionaries with diamagnetic tensor components.
+        :param S_para: List of dictionaries with paramagnetic tensor components.
+        :param S_tot: List of dictionaries with total tensor components.
+        :param nuclear_identities_2: List of nuclear identity strings.
+        :param displacement_steps_distance: List of displacement steps.
+        :param min_distance_value: Minimum distance value for shading the NONCOV effective region.
+        :param max_distance_value: Maximum distance value for shading the NONCOV effective region.
+        :param scratch_dir: Directory to save the plots.
+        :param iteration: Current iteration number (used for filename).
+        """
+        # Create a folder to save the tensor plots as PDFs and JPEGs if it doesn't exist
+        pas_tensors_figures_folder = os.path.join(scratch_dir, 'OrcaAnalysis/tensor_plots')
+        os.makedirs(pas_tensors_figures_folder, exist_ok=True)
+
+        # Loop over each nucleus identity and plot its tensor shielding values
+        for nucleus_list in nuclear_identities:
+            for nucleus_key in nucleus_list:
+                if isinstance(nucleus_key, list):
+                    nucleus_key = "_".join(map(str, nucleus_key))
+                    
+                # Extract individual contributions to shielding values for the current nucleus from each dictionary
+                nucleus_values_S_dia = [d.get(nucleus_key, [])[0] for d in S_dia]
+                nucleus_values_S_para = [d.get(nucleus_key, [])[0] for d in S_para]
+                nucleus_values_S_tot = [d.get(nucleus_key, [])[0] for d in S_tot]
+
+                # Split the nucleus_key into a tuple (nucleus number, element)
+                nucleus = tuple(nucleus_key.split())
+
+                # Plot the shielding values for the current nucleus
+                plt.plot(nucleus_values_S_dia, marker='o', linestyle='-', color='darkblue', label=r'$\sigma$_dia_11')
+                plt.plot(nucleus_values_S_para, marker='o', linestyle='-', color='orangered', label=r'$\sigma$_para_11')
+                plt.plot(nucleus_values_S_tot, marker='o', linestyle='-', color='gold', label=r'$\sigma$_tot_11')
+
+                # Highlight the NONCOV effective region (optional, can be commented out if not needed)
+                plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
+                
+                # Set labels and title
+                plt.xlabel('Displacement from initial geometry / Å')
+                plt.ylabel('Shielding / ppm')
+                plt.title(f'Nucleus {nucleus[1]} {nucleus[2]} - Iteration {iteration}')
+                
+                # Display legend
+                plt.legend(loc='best')
+                
+        # Save the plot as a PDF in the output folder
+        pdf_filename = os.path.join(pas_tensors_figures_folder, f'nucleus_{nucleus[1]}_iteration_{iteration}.pdf')
+        plt.savefig(pdf_filename, bbox_inches='tight')
+
+        # Save the plot as a JPEG in the output folder
+        jpg_filename = os.path.join(pas_tensors_figures_folder, f'nucleus_{nucleus[1]}_iteration_{iteration}.jpg')
+        plt.savefig(jpg_filename, bbox_inches='tight')
+        
+        # Show the plot (optional, can be commented out if you don't want to display the plots)
+        #plt.show()
+
+        # Clear the current figure for the next iteration
+        plt.clf()
+
+    def euler_angles_to_rotation_matrix(alpha, beta, gamma):
+        """
+        Convert Euler angles to rotation matrix.
+        :param alpha: Rotation angle around the Z-axis
+        :param beta: Rotation angle around the X-axis
+        :param gamma: Rotation angle around the Z-axis
+        :return: Rotation matrix
+        """
+        r = R.from_euler('zyz', [alpha, beta, gamma], degrees=True)
+        return r.as_matrix()
+
+    def plot_3D_tensor(tensor, label, color, ax):
+        """
+        Plot a 3D tensor (as ellipsoid).
+        :param tensor: The tensor to plot
+        :param label: Label for the tensor
+        :param color: Color of the tensor
+        :param ax: The axes to plot on
+        """
+        # Compute the ellipsoid coordinates - replace here with radius ovaloid
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+        x = np.outer(np.cos(u), np.sin(v))
+        y = np.outer(np.sin(u), np.sin(v))
+        z = np.outer(np.ones(np.size(u)), np.cos(v))
+
+        # Scale ellipsoid by the tensor eigenvalues
+        eigenvalues, eigenvectors = np.linalg.eig(tensor)
+        ellipsoid = np.dot(eigenvectors, np.dot(np.diag(eigenvalues), np.array([x.flatten(), y.flatten(), z.flatten()])))
+        x, y, z = ellipsoid.reshape((3, *x.shape))
+
+        ax.plot_surface(x, y, z, color=color, alpha=0.5)
+        ax.set_title(label)
+
+    def plot_tensor_principal_axes(tensor_pas, tensor, color):
+        """
+        Plot the principal axes of a tensor.
+        :param ax: The axes to plot on
+        :param tensor: The tensor whose axes to plot
+        :param color: Color of the axes
+        """
+        origin = np.array([0, 0, 0])
+        eigenvalues, eigenvectors = np.linalg.eig(tensor)
+        
+        for i in range(3):
+            tensor_pas.quiver(*origin, *eigenvectors[:, i], length=eigenvalues[i], color=color, label=f'Axis {i+1}')
+
+        tensor_pas.set_xlim([-1, 1])
+        tensor_pas.set_ylim([-1, 1])
+        tensor_pas.set_zlim([-1, 1])
+        tensor_pas.set_xlabel('X')
+        tensor_pas.set_ylabel('Y')
+        tensor_pas.set_zlabel('Z')
+
+    def plot_3D_tensors_and_axes(tensor_pas, alpha, beta, gamma):
+        """
+        Plot the original tensor, rotated tensor, and their axes.
+        :param tensor_pas: Diagonal tensor in PAS
+        :param alpha: Rotation angle around the Z-axis (degrees)
+        :param beta: Rotation angle around the X-axis (degrees)
+        :param gamma: Rotation angle around the Z-axis (degrees)
+        """
+        # Compute the rotation matrix from Euler angles
+        rotation_matrix = MolView.euler_angles_to_rotation_matrix(alpha, beta, gamma)
+        
+        # Compute the rotated tensor
+        tensor_rotated = rotation_matrix @ tensor_pas @ np.linalg.inv(rotation_matrix)
+
+        fig = plt.figure(figsize=(16, 12))
+
+        # Original Tensor Plot
+        ax1 = fig.add_subplot(221, projection='3d')
+        MolView.plot_3D_tensor(tensor_pas, 'Original Tensor', 'blue', ax1)
+        
+        # Rotated Tensor Plot
+        ax2 = fig.add_subplot(222, projection='3d')
+        MolView.plot_3D_tensor(tensor_rotated, 'Rotated Tensor', 'red', ax2)
+
+        # Original Tensor Axes
+        ax3 = fig.add_subplot(223, projection='3d')
+        MolView.plot_tensor_principal_axes(ax3, tensor_pas, 'blue')
+        ax3.set_title('Original Tensor Axes')
+
+        # Rotated Tensor Axes
+        ax4 = fig.add_subplot(224, projection='3d')
+        MolView.plot_tensor_principal_axes(ax4, tensor_rotated, 'red')
+        ax4.set_title('Rotated Tensor Axes')
+
+        plt.tight_layout()
+        plt.show()
+
 
 # ------------------------------------------------------------------------------
 #                        STRUCTURAL CHANGES AND CONFORMERS 
