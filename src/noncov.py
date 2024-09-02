@@ -325,16 +325,11 @@ class NMRFunctions(NONCOVToolbox):
         symmetry = len(eigenvals) - len(unique_eigenvals) 
         print(f'Symmetry of the tensor based on eigenvals count is: {symmetry}\n')
         if symmetry == 0:
-            print('which means that')
-        else:
-            print('which means that')
-
-        if len(unique_eigenvals) == 1:
-            print("The tensor is completely isotropic (all eigenvalues are the same).\n")
-        elif len(unique_eigenvals) < len(eigenvals):
-            print("The tensor has some symmetry (some eigenvalues are repeated).\n")
-        else:
-            print("The tensor has no obvious eigenvalue symmetry.\n")
+            print('which means that the tensor is completely anysotropic \n')
+        elif symmetry == 1:
+            print('which means that the tensor has axial symmetry \n')
+        elif symmetry == 2:
+            print('which means that the tensor is completely isotropic \n')
 
         # Additional symmetry checks for shielding tensor
         is_symmetric = np.allclose(shielding_tensor, shielding_tensor.T) 
