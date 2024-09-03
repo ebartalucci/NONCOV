@@ -231,7 +231,7 @@ class NMRFunctions(NONCOVToolbox):
         super().__init__()
 
     # 3x3 Matrix diagonalization and PAS shielding tensor ordering in Mehring and Haberlen conventions
-    def diagonalize_tensor(self, sxx, sxy, sxz, syx, syy, syz, szx, szy, szz):
+    def diagonalize_tensor(self, shielding_tensor):
         """
         Take NMR tensor elements as input and perform various operations, including diagonalization and ordering according to Mehring and Haberlen formalisms.
         Input
@@ -251,13 +251,8 @@ class NMRFunctions(NONCOVToolbox):
         print("# -------------------------------------------------- #")
         print("# TENSOR DIAGONALIZATION FUNCTION HAS BEEN REQUESTED #")
         print(f'\n')
-                
-        # Initialize shielding tensor matrix
-        shielding_tensor = np.matrix([[sxx, sxy, sxz],
-                                    [syx, syy, syz],
-                                    [szx, szy, szz]]
-                                    )
-        
+
+        shielding_tensor = np.array(shielding_tensor)                
         print(f'Shielding Tensor is: \n{shielding_tensor}')
         print('Proceeding to transposing...\n')
 
@@ -1350,7 +1345,8 @@ class MolView(NONCOVToolbox):
                 plt.plot(displacement_steps_distance, nucleus_values_Siso, marker='*', linestyle='-', color='magenta', label=r'$\sigma$_iso')
 
                 # Highlight the NONCOV effective region
-                plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
+                if min_distance_value is not None and max_distance_value is not None:
+                    plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
                 
                 # Set labels and title
                 plt.xlabel('Displacement from initial geometry / Å')
@@ -1369,7 +1365,7 @@ class MolView(NONCOVToolbox):
                 plt.savefig(jpg_filename, bbox_inches='tight')
                 
                 # Show the plot (optional, can be commented out if you don't want to display the plots)
-                #plt.show()
+                plt.show()
 
                 # Clear the current figure for the next iteration
                 plt.clf()   
