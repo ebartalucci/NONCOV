@@ -235,7 +235,7 @@ class NMRFunctions(NONCOVToolbox):
         """
         Take NMR tensor elements as input and perform various operations, including diagonalization and ordering according to Mehring and Haberlen formalisms.
         Input
-        :param sxx, sxy, sxz, syx, syy, syz, szx, szy, szz: individual tensor components for a 3x3 chemical shielding matrix
+        :param shielding_tensor: tensor components in 3x3 chemical shielding matrix
         
         Output
         :param shielding_tensor: original shielding tensor in matrix format
@@ -290,7 +290,7 @@ class NMRFunctions(NONCOVToolbox):
 
         # Compute isotropic shift
         s_iso = np.sum(np.diag(diagonal)) / 3
-        s_iso = s_iso.round(5)
+        s_iso = s_iso.round(2)
         print(f'Isotropic shift is: {s_iso} ppm')
         print('Proceeding to Haberlen ordering...\n')
 
@@ -1291,85 +1291,6 @@ class MolView(NONCOVToolbox):
         
         return r_ov
     
-    def plot_iso_shifts(S_tot, nuclear_identities, displacement_steps_distance, 
-                    min_distance_value, max_distance_value, scratch_dir):
-        """
-        Plots the diagonal components of the shielding tensor for each nucleus.
-        
-        :param S_tot: List of dictionaries with shielding tensor components.
-        :param nuclear_identities: List of lists of nuclear identity strings (keys).
-        :param displacement_steps_distance: List of displacement steps.
-        :param min_distance_value: Minimum distance value for shading the NONCOV effective region.
-        :param max_distance_value: Maximum distance value for shading the NONCOV effective region.
-        :param scratch_dir: Directory to save the plots.
-        """
-        # Create a folder to save the shifts plots as PDFs and JPEGs if it doesn't exist
-        shifts_figures_folder = os.path.join(scratch_dir, 'OrcaAnalysis/shifts_plot')
-        os.makedirs(shifts_figures_folder, exist_ok=True)
-
-        # Plot the shielding parameters for each nucleus
-        for nucleus_list in nuclear_identities:
-            for nucleus_key in nucleus_list:
-                # Extract shielding values for the current nucleus from each dictionary
-                nucleus_values_S11 = []
-                nucleus_values_S22 = []
-                nucleus_values_S33 = []
-                nucleus_values_Siso = []
-
-                for d in S_tot:
-                    if isinstance(d, dict):
-                        tensor = d.get(nucleus_key)
-                        if tensor and len(tensor) == 3 and all(len(row) == 3 for row in tensor):
-                            nucleus_values_S11.append(tensor[0][0])
-                            nucleus_values_S22.append(tensor[1][1])
-                            nucleus_values_S33.append(tensor[2][2])
-                        else:
-                            print(f"Unexpected tensor shape for nucleus '{nucleus_key}' or data not found.")
-                    else:
-                        print(f"Unexpected type in S_tot: {type(d)}")
-
-                if len(nucleus_values_S11) == 0:
-                    print(f"No data available for nucleus '{nucleus_key}'")
-                    continue
-
-                # Calculate isotropic shielding
-                nucleus_values_Siso = [(S11 + S22 + S33) / 3 for S11, S22, S33 in zip(nucleus_values_S11, nucleus_values_S22, nucleus_values_S33)]
-
-                # Split the nucleus_key into a tuple (nucleus number, element) if needed
-                nucleus = tuple(nucleus_key.split())
-
-                # Plot the shielding values for the current nucleus
-                plt.plot(displacement_steps_distance, nucleus_values_S11, marker='o', linestyle='-', color='darkblue', label=r'$\sigma$_11')
-                plt.plot(displacement_steps_distance, nucleus_values_S22, marker='o', linestyle='-', color='orangered', label=r'$\sigma$_22')
-                plt.plot(displacement_steps_distance, nucleus_values_S33, marker='o', linestyle='-', color='gold', label=r'$\sigma$_33')
-                plt.plot(displacement_steps_distance, nucleus_values_Siso, marker='*', linestyle='-', color='magenta', label=r'$\sigma$_iso')
-
-                # Highlight the NONCOV effective region
-                if min_distance_value is not None and max_distance_value is not None:
-                    plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
-                
-                # Set labels and title
-                plt.xlabel('Displacement from initial geometry / Å')
-                plt.ylabel('Shielding / ppm')
-                plt.title(f'Nucleus {nucleus[1]} {nucleus[2]}')
-                
-                # Display legend
-                plt.legend(loc='best')
-                
-                # Save the plot as a PDF in the output folder
-                pdf_filename = os.path.join(shifts_figures_folder, f'nucleus_{nucleus[1]}_{nucleus[2]}.pdf')
-                plt.savefig(pdf_filename, bbox_inches='tight')
-
-                # Save the plot as a JPEG in the output folder
-                jpg_filename = os.path.join(shifts_figures_folder, f'nucleus_{nucleus[1]}_{nucleus[2]}.jpg')
-                plt.savefig(jpg_filename, bbox_inches='tight')
-                
-                # Show the plot (optional, can be commented out if you don't want to display the plots)
-                plt.show()
-
-                # Clear the current figure for the next iteration
-                plt.clf()   
-
     def plot_tensor_shielding(S_dia, S_para, S_tot, nuclear_identities, 
                             displacement_steps_distance, min_distance_value, max_distance_value, 
                             scratch_dir, iteration):
@@ -1410,7 +1331,8 @@ class MolView(NONCOVToolbox):
                 plt.plot(nucleus_values_S_tot, marker='o', linestyle='-', color='gold', label=r'$\sigma$_tot_11')
 
                 # Highlight the NONCOV effective region (optional, can be commented out if not needed)
-                plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
+                if min_distance_value is not None and max_distance_value is not None:
+                    plt.axvspan(min_distance_value, max_distance_value, alpha=0.2, color='grey', label='NONCOV \n effective region')
                 
                 # Set labels and title
                 plt.xlabel('Displacement from initial geometry / Å')
