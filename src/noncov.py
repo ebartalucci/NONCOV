@@ -853,9 +853,16 @@ class OrcaAnalysis(NONCOVToolbox):
         try:
             with open(output_file, 'r') as f:
                 lines = f.readlines()
+
+                start_search = False
                 
                 # Search for the line containing "# Level of theory"
                 for i, line in enumerate(lines):
+
+                    if 'INPUT FILE' in line:
+                        start_search = True
+                        continue
+
                     if "# Level of theory" in line or '!' in line:
                         # Extract the line immediately after it, this wont work if ppl dont use my syntax
                         level_of_theory_line = lines[i + 1].strip()
@@ -865,6 +872,9 @@ class OrcaAnalysis(NONCOVToolbox):
                         level_of_theory = re.sub(r'\|\d+>', "", level_of_theory_line).strip()
 
                         return level_of_theory
+                    
+                    if '****END OF INPUT****' in line:
+                        break
 
                 return "Level of theory not found in the file."
         
@@ -1008,9 +1018,9 @@ class OrcaAnalysis(NONCOVToolbox):
         else:
             print(f"Selected boundary distance values / Å: min={min_distance_value}, max={max_distance_value}")
 
-    def extract_csa_data(self, splitted_output_file):
+    def extract_tensor_data(self, splitted_output_file):
         """
-        Load the splitted orca output files and read total CSA tensor and its components
+        Load the splitted orca output files and read total tensor and its components
         Input:
         splitted_output_file: orca output file splitted by number of jobs
         Output:
@@ -1018,8 +1028,6 @@ class OrcaAnalysis(NONCOVToolbox):
         :shielding_para: diagonal paramagnetic shielding tensor components  
         :shielding_tot: diagonal total shielding tensor components
         :nuc_identity: nucleus associated with the tensor values
-        Output_file:
-        shielding_{job_number}.txt: condensed nmr info ready for plotting
         """
 
         # Dictionaries to store diamagnetic tensor components for each nucleus type
@@ -1114,19 +1122,17 @@ class OrcaAnalysis(NONCOVToolbox):
         return shielding_dia, shielding_para, shielding_tot, nuc_identity
     
 
-    # SECTION 6: EXTRACT SCALAR COUPLINGS IF PRESENT
-    def read_couplings(self, output_file): # need run only if in input ssall
+    # TO DO SECTION EXTRACT SCALAR COUPLINGS IF PRESENT
+    def extract_coupling_data(self, splitted_output_file):
         """
         Read the output file from an ORCA calculation. Extract scalar couplings for each nucleus
 
         Input:
-        output_file:
-            is the file that comes as outcome from ORCA calculations containing the most important informations
+        splitted_output_file:
+            is the split file that comes as outcome from ORCA calculations containing the most important informations
             on the simulations. We want the NMR parameter, which are towards the end of the ORCA .mpi8.out file.
         Output:
-        j_couplings.txt:
-            file with condensed NMR data ready for plotting.
-            It contains scalar J couplings in pseudo-table format
+        j_coupling_ij, nucleus_i, nucleus_j, r_ij
         """
 
         # Dictionary to store NMR data for each nucleus
@@ -1141,7 +1147,7 @@ class OrcaAnalysis(NONCOVToolbox):
         start_marker = re.compile(r'^\s*SUMMARY\s+OF\s+ISOTROPIC\s+COUPLING\s+CONSTANTS\s+\(Hz\)')
         end_marker = re.compile(r'Maximum memory used throughout the entire EPRNMR-calculation:')
 
-        with open(output_file, 'r') as f:
+        with open(splitted_output_file, 'r') as f:
             for line in f:
                 line = line.strip()
 
