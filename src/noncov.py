@@ -15,6 +15,7 @@
 # Import modules 
 import os
 import sys
+import random
 import numpy as np
 from pathlib import Path
 from sklearn.cluster import KMeans
@@ -429,7 +430,7 @@ class NMRFunctions(NONCOVToolbox):
                     alpha = np.arctan2(R[1,2]/np.sin(beta), R[0,2]/np.sin(beta))
                     gamma = np.arctan2(R[2,1]/np.sin(beta), -R[2,0]/np.sin(beta))
 
-            if symmetry == 1: # spherical symmetry
+            if symmetry == 2: # spherical symmetry
                 print('The tensor has spherical symmetry, angles are all zero..')
                 alpha = 0
                 beta = 0
@@ -1457,7 +1458,7 @@ class MolView(NONCOVToolbox):
 # ------------------------------------------------------------------------------
 #                        STRUCTURAL CHANGES AND CONFORMERS 
 # ------------------------------------------------------------------------------
-class DistanceScanner(NONCOVToolbox):
+class StructureModifier(NONCOVToolbox):
     """
     Take an input structure with two fragments and displace along centroid vector
      General remarks:
@@ -1466,10 +1467,10 @@ class DistanceScanner(NONCOVToolbox):
        displacement vector, please fix accordingly
     """
     def __init__(self):
-        super().__init__('DistanceScanner')
+        super().__init__()
     
     # SECTION 1: READING XYZ ATOMIC COORDINATES FROM FILE AND SPLIT THE FRAGMENTS
-    def read_atomic_coord(file_path):
+    def read_atomic_coord(self, file_path):
         """
         This function reads the geometry optimized atomic coordinates of the two fragments
         you want to displace, the input is the classical .xyz coordinate file that can
@@ -1493,7 +1494,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 2: CALCULATION OF CENTROIDS AND STORING VALUES IN FILE
-    def calculate_centroids(coordinates):
+    def calculate_centroids(self, coordinates):
         """
         This function computes centroids for the defined fragments.
         :param coordinates: molecular model xyz coordinates for centroid calculations
@@ -1505,7 +1506,7 @@ class DistanceScanner(NONCOVToolbox):
             centroids.append(centroid)
         return np.array(centroids)
 
-    def write_centroids(file_path, centroids):
+    def write_centroids(self, file_path, centroids):
         """
         This function writes centroids to file for furhter manipulation.
         :param file_path: path where the centroids are written
@@ -1519,7 +1520,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 3: CHECKPOINT COMPUTE TOPOLOGY AND K-NEAREST CLUSTERING FOR MOLECULAR CENTROIDS
-    def plot_starting_molecular_fragments(coords1, coords2, centroids):
+    def plot_starting_molecular_fragments(self, coords1, coords2, centroids):
         """
         Plot the initial molecular fragments in 3D
         :param coords1: coordinates fragment 1, specified in input file
@@ -1536,7 +1537,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 4: READ USER PROVIDED INPUT FILE, SPLIT AND ASSIGN MOLECULAR FRAGMENTS TO INDIVIDUAL MOLECULES
-    def assign_molecule_fragments(coordinates, input_file):
+    def assign_molecule_fragments(self, coordinates, input_file):
         """
         Assign the respective fragments to atom in xyz list
         :param coordinates: atomic xyz coordinates
@@ -1564,7 +1565,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 5: DISPLACE THE TWO FRAGMENT ALONG THE CENTROID LINE MOVING ONE AND FIXING THE OTHER
-    def displace_fragment(coords1, displacement_direction, displacement_step, i):
+    def displace_fragment(self, coords1, displacement_direction, displacement_step, i):
         """
         This function displaces the fragment along the displacement_direction vector.
         :param coords1: coordinates of fragment 1 to be displaced
@@ -1587,7 +1588,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 6: WRITE NEW DISPLACED COORDINATES TO FILES
-    def write_displaced_xyz_file(file_path, coords_fixed, coords_displaced, atom_identities):
+    def write_displaced_xyz_file(self, file_path, coords_fixed, coords_displaced, atom_identities):
         """
         This function writes both the fixed and displaced coordinates to an XYZ file.
         :param file_path: where the structure files are written
@@ -1611,7 +1612,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 7: count fragments for K-means clustering
-    def count_fragments(input_file):
+    def count_fragments(self, input_file):
         with open(input_file, 'r') as f:
             lines = f.readlines()
             count = 0
@@ -1623,7 +1624,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 8: COMPUTE DISTANCE OF DISPLACED ATOMS FROM FIXED CENTROID
-    def compute_distance_from_centroid(coord_displaced, centroids):
+    def compute_distance_from_centroid(self, coord_displaced, centroids):
         """
         Calculate relative centroid distances for future analysis
         :param coords_displaced: coordinates of the 
@@ -1647,7 +1648,7 @@ class DistanceScanner(NONCOVToolbox):
     #-------------------------------------------------------------------#
 
     # SECTION 9: WRITE DISTANCES TO FILES
-    def write_distances_file(file_path, coords_displaced, distance_to_centroid, atom_identities, displacement_step):
+    def write_distances_file(self, file_path, coords_displaced, distance_to_centroid, atom_identities, displacement_step):
         """
         This function writes the distances between fixed centroid and displaced coordinates to a file.
         :param file_path: where the distance files will be written
@@ -1670,42 +1671,58 @@ class DistanceScanner(NONCOVToolbox):
 # ------------------------------------------------------------------------------
 #               GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
 # ------------------------------------------------------------------------------ 
-class GenerateMLDataset(NONCOVToolbox):
+class MachineLearning(NONCOVToolbox):
+    """
+    Machine learning database
+    """
+    def __init__(self):
+        super().__init__()
     
-    def __init__(self, root_directory, output_csv_path):
-        super().__init__('GenerateMLDataset')
-                    
-        self.root_directory = root_directory
-    
-        self.output_csv_path = output_csv_path
-
-        # Headers of features, total features = 19
-        self.columns = ['molecule', # Categorical
-                        'atom', # Categorical
-                        'noncov', # Categorical
-                        'x_coord', # Integer
-                        'y_coord', # Integer
-                        'z_coord', # Integer
-                        'tot_shielding_11', # Integer
-                        'tot_shielding_22', # Integer
-                        'tot_shielding_33', # Integer
-                        'dia_shielding_11', # Integer
-                        'dia_shielding_22', # Integer
-                        'dia_shielding_33', # Integer
-                        'para_shielding_11', # Integer
-                        'para_shielding_22', # Integer
-                        'para_shielding_33', # Integer
-                        'iso_shift', # Integer 
-                        'nmr_functional', # Categorical
-                        'nmr_basis_set', # Categorical
-                        'aromatic' # Binary             
+    def make_empty_database(self, output_csv_path):
+        # Headers of features = number of columns
+        columns = ['Molecule', # Categorical
+                    'Atom', # Categorical
+                    'Noncov', # Categorical
+                    'x_coord', # Integer
+                    'y_coord', # Integer
+                    'z_coord', # Integer
+                    'sigma_11', # Integer
+                    'sigma_22', # Integer
+                    'sigma_33', # Integer
+                    'dia_sigma_11', # Integer
+                    'dia_sigma_22', # Integer
+                    'dia_sigma_33', # Integer
+                    'para_sigma_11', # Integer
+                    'para_sigma_22', # Integer
+                    'para_sigma_33', # Integer
+                    'sigma_iso', # Integer 
+                    'nmr_functional', # Categorical
+                    'nmr_basis_set', # Categorical
+                    'J_iso',
+                    'J_FC_11',
+                    'J_FC_22',
+                    'J_FC_33',
+                    'J_DSO_11',
+                    'J_DSO_22',
+                    'J_DSO_33',
+                    'J_PSO_11',
+                    'J_PSO_22',
+                    'J_PSO_33',
+                    'J_SD_11',
+                    'J_SD_22',
+                    'J_SD_33',
+                    'Bond order stuff, Wiberg',
+                    'Bond critical points',
                         ]
         
         # Create the dataframe
-        self.df = pd.DataFrame(columns=self.columns)
-
+        df = pd.DataFrame(columns=columns)
+        df_out = os.path.join(output_csv_path, 'calculated_nmr_observables.csv')
+        
+        df.to_csv(df_out, index=False)
+        
         # Keep the user happy by saying that something happened
-        print(f'The empty dataset has been created and saved in: {self.output_csv_path}')
+        print(f'The empty dataset has been created and saved in: {df_out}')
         print('\n')
 
     # Extract features from splitted orca output files
@@ -1900,7 +1917,7 @@ class GenerateMLDataset(NONCOVToolbox):
 # ------------------------------------------------------------------------------
 class MolecularGraph(NONCOVToolbox):
     def __init__(self):
-        super().__init__('MolecularGraph')
+        super().__init__()
         self.graph = nx.Graph()
 
     def add_atom(self, atom_index, atom_type, coordinate):
@@ -1909,11 +1926,16 @@ class MolecularGraph(NONCOVToolbox):
     def add_bond(self, atom1_index, atom2_index, bond_type="covalent"):
         self.graph.add_edge(atom1_index, atom2_index, bond_type=bond_type)
 
-    def draw(self):
+    def draw(self, mol_fragment=None):
         pos = nx.spring_layout(self.graph)  
         labels = nx.get_node_attributes(self.graph, 'atom_type')
         bond_types = nx.get_edge_attributes(self.graph, 'bond_type')
-        edge_colors = ["blue" if bond == "noncovalent" else "red" for bond in bond_types.values()]
+        
+        colors = ['red', 'blue', 'orange', 'purple', 'darkseagreen', 'gold', ]
+        
+        node_colors = []
+        
+        edge_colors = ["gold" if bond == "noncovalent" else "black" for bond in bond_types.values()]
 
         edge_x = []
         edge_y = []
@@ -1930,7 +1952,7 @@ class MolecularGraph(NONCOVToolbox):
 
         edge_trace = go.Scatter(
             x=edge_x, y=edge_y,
-            line=dict(width=2, color='#888'),
+            line=dict(width=2, color='gold'),
             hoverinfo='none',
             mode='lines'
         )
@@ -2169,7 +2191,7 @@ class MolecularGraph(NONCOVToolbox):
 
         labels = nx.get_node_attributes(graph, 'atom_type')
         bond_types = nx.get_edge_attributes(graph, 'bond_type')
-        edge_colors = ["blue" if bond == "noncovalent" else "red" for bond in bond_types.values()]
+        edge_colors = ["blue" if bond == "noncovalent" else "black" for bond in bond_types.values()]
 
         nx.draw(graph, pos, ax=ax, labels=labels, with_labels=True, node_size=500, node_color="skyblue", edge_color=edge_colors, font_size=8)
         ax.set_title(title)
@@ -2201,15 +2223,3 @@ class MolecularGraph(NONCOVToolbox):
             if interaction_type != "intramolecular":  # Intermolecular if not intramolecular
                 graph.add_edge(i, j, bond_type="intermolecular")
         return graph
-
-
-
-# ------------------------------------------------------------------------------
-#                       DATA HANDLING AND DATABASE PUSH
-# ------------------------------------------------------------------------------
-class MakeDatabase:
-    """
-    Take an input structure with two fragments and displace along centroid vector
-    """
-    def __init__(self):
-        super().__init__('MakeDatabase')
