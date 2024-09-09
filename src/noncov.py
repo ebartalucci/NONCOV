@@ -1124,72 +1124,146 @@ class OrcaAnalysis(NONCOVToolbox):
     
 
     # TO DO SECTION EXTRACT SCALAR COUPLINGS IF PRESENT
-    def extract_coupling_data(self, splitted_output_file):
+    def extract_j_coupling(self, n_nuclei, filename):
+        
+        column_labels = []
+        
+        data = []
+        
+        start_reading = False
+        
+        row_data = []
+        
+        rows_to_read = 0
+        
+        with open(filename, 'r') as file:
+            
+            for line in file:
+
+                if 'SUMMARY OF ISOTROPIC COUPLING CONSTANTS (Hz)' in line:
+                    start_reading = True
+                    continue
+
+                if 'Maximum memory used throughout the entire EPRNMR-calculation:' in line:
+                    break
+                
+                if start_reading:
+
+                    if not column_labels and re.search(r'\d+ [A-Z]', line):
+                        column_labels = re.findall(r'\d+ [A-Z]', line)
+                        rows_to_read = n_nuclei
+                        print(f"Column labels extracted: {column_labels}")
+                        continue
+                    
+                    # Accumulate data if we are reading rows
+                    if rows_to_read > 0:
+                        line_parts = line.split()
+                        
+                        if not line_parts:
+                            continue
+                        
+                        # Detect if this line contains row header and values
+                        if len(line_parts) > 2:
+                            row_nucleus = line_parts[0] + ' ' + line_parts[1]  # Y-axis nucleus
+                            values = line_parts[2:]
+                            
+                            # Combine current row data with new values
+                            if row_data:
+                                row_data[1].extend(values)
+                            else:
+                                row_data = [row_nucleus, values]
+
+                            # Check if we have a complete row
+                            if len(row_data[1]) >= len(column_labels):
+                                # Extract complete row data
+                                row_nucleus = row_data[0]
+                                values = row_data[1][:len(column_labels)]
+                                
+                                # Store row data
+                                data.append([row_nucleus] + [float(value) for value in values])
+                                
+                                # Reset row_data for the next row
+                                row_data = []
+                                rows_to_read -= 1
+                                if rows_to_read == 0:
+                                    continue
+        
+        # Create DataFrame
+        df = pd.DataFrame(data, columns=['Nucleus'] + column_labels)
+        df.set_index('Nucleus', inplace=True)
+
+        return df
+
+
+    def extract_mayer_bond_order(self, splitted_output_file):
         """
-        Read the output file from an ORCA calculation. Extract scalar couplings for each nucleus
-
-        Input:
-        splitted_output_file:
-            is the split file that comes as outcome from ORCA calculations containing the most important informations
-            on the simulations. We want the NMR parameter, which are towards the end of the ORCA .mpi8.out file.
-        Output:
-        j_coupling_ij, nucleus_i, nucleus_j, r_ij
+        Read split orca file and extract tuples of Meyer bond orders between nuclei
         """
-
-        # Dictionary to store NMR data for each nucleus
-        j_coupling_data = {}
-
-        # List to store the order of nuclei
-        nuclei_order = []
-
-        reading_couplings = False
-
-        # Define regular expressions for start and end markers
-        start_marker = re.compile(r'^\s*SUMMARY\s+OF\s+ISOTROPIC\s+COUPLING\s+CONSTANTS\s+\(Hz\)')
-        end_marker = re.compile(r'Maximum memory used throughout the entire EPRNMR-calculation:')
+        bond_orders = {}
+        start_reading = False
 
         with open(splitted_output_file, 'r') as f:
             for line in f:
-                line = line.strip()
-
-                # Check for start marker
-                if start_marker.search(line):
-                    reading_couplings = True
-                    print("Entering the reading couplings block.")
-                    continue  # Start reading couplings
+                if 'Mayer bond orders larger than' in line:
+                    start_reading = True
+                    continue
                 
-                # Check for end marker
-                if end_marker.search(line):
-                    reading_couplings = False
-                    print("Exiting the reading couplings block.")
-                    break  # Stop reading couplings when this line is encountered
+                if 'TIMINGS' in line:
+                    break
 
-                # If we're reading couplings, process the line
-                if reading_couplings and line:
-                    data_values = re.split(r'\s+', line)
-                    nucleus = data_values[0]
-                    j_couplings = data_values[1:]
-                    nuclei_order.append(nucleus)  # Add the nucleus to the order list
-                    j_coupling_data[nucleus] = j_couplings
-                    
-        # Write the formatted J coupling data to j_couplings.txt
-        with open('scratch/OrcaAnalysis/nmr_data/j_couplings.txt', 'w') as output_file:
-            # Write the header row with nuclei information
-            output_file.write('\t'.join(nuclei_order) + '\n')
-            
-            # Write the data rows
-            for nucleus, j_couplings in j_coupling_data.items():
-                output_file.write(f"{nucleus}\t{' '.join(j_couplings)}\n")
+                if start_reading:
+                    matches = re.findall(r'B\(\s*(\d+-[A-Z])\s*,\s*(\d+-[A-Z])\s*\)\s*:\s*([-\d.]+)', line)
 
-        print("J couplings extracted and saved to 'nmr_data/j_couplings.txt'.")
+                    for nucleus1, nucleus2, bond_order in matches:
+                        bond_order_value = float(bond_order)
 
-    # ----------------------------------------------------------------#
+                        # For nucleus1, add (interacting nucleus2, bond order)
+                        if nucleus1 not in bond_orders:
+                            bond_orders[nucleus1] = []
+                        bond_orders[nucleus1].append((nucleus2, bond_order_value))
 
+                        # For nucleus2, add (interacting nucleus1, bond order)
+                        if nucleus2 not in bond_orders:
+                            bond_orders[nucleus2] = []
+                        bond_orders[nucleus2].append((nucleus1, bond_order_value))
 
-    # ----------------------------------------------------------------#
-    # SECTION 9: EXTRACT INITIAL DISTANCE BETWEEN NUCLEAR PAIRS FOR DISTANCE PLOTS
-    # compute the displacement as a difference between the coordinates of the first point and the
-    # coordinates of the second point.
+        return bond_orders
+    
+
+    def extract_xyz_coords(self, property_files):
+        """
+        From each property file extract x,y,z coordinates and nuclear identity to append
+        to Machine Learning database
+        """
+        nuclear_identity = []
+        x_coord = []
+        y_coord = []
+        z_coord = []
+
+        start_reading = False
+
+        with open(property_files, 'r') as f:
+            for line in f:
+                if '!GEOMETRY!' in line:
+                    start_reading = True
+                    continue
+
+                if start_reading:
+                    match = re.match(r'\s*(\d+)\s*([A-Z])\s*([-.\d]+)\s*([-.\d]+)\s*([-.\d]+)', line)
+
+                    if match:
+                        atom_number = match.group(1)
+                        element = match.group(2)
+                        x = float(match.group(3))
+                        y = float(match.group(4))
+                        z = float(match.group(5))
+
+                        nuclear_identity.append(f'{atom_number}{element}')
+                        x_coord.append(x)
+                        y_coord.append(y)
+                        z_coord.append(z)
+
+        return nuclear_identity, x_coord, y_coord, z_coord
 
 
 # ------------------------------------------------------------------------------
@@ -1596,6 +1670,7 @@ class StructureModifier(NONCOVToolbox):
         :param coords_displaced: coordinates of the displaced fragment, in this case fragment 1
         :param atom_identities: append to file the identities of each atom again, since they are lost in processing steps
         """
+        file_path = Path(file_path)
         with open(file_path, 'w') as f:
             num_atoms = len(coords_fixed) + len(coords_displaced)
             f.write(f'{num_atoms}\n')
@@ -1657,6 +1732,8 @@ class StructureModifier(NONCOVToolbox):
         :param atom_identities: identities of each atom which are lost in the processing
         :param displacement_step: how many angstroem are we displacing this structures
         """
+        file_path = Path(file_path)
+
         with open(file_path, 'w') as f:
             num_atoms = len(coords_displaced)
             f.write(f'Number of atoms: {num_atoms}\n')
@@ -1680,24 +1757,24 @@ class MachineLearning(NONCOVToolbox):
     
     def make_empty_database(self, output_csv_path):
         # Headers of features = number of columns
-        columns = ['Molecule', # Categorical
-                    'Atom', # Categorical
-                    'Noncov', # Categorical
-                    'x_coord', # Integer
-                    'y_coord', # Integer
-                    'z_coord', # Integer
-                    'sigma_11', # Integer
-                    'sigma_22', # Integer
-                    'sigma_33', # Integer
-                    'dia_sigma_11', # Integer
-                    'dia_sigma_22', # Integer
-                    'dia_sigma_33', # Integer
-                    'para_sigma_11', # Integer
-                    'para_sigma_22', # Integer
-                    'para_sigma_33', # Integer
-                    'sigma_iso', # Integer 
-                    'nmr_functional', # Categorical
-                    'nmr_basis_set', # Categorical
+        columns = ['Molecule', 
+                    'Atom', 
+                    'Noncov', 
+                    'x_coord', 
+                    'y_coord', 
+                    'z_coord', 
+                    'sigma_11', 
+                    'sigma_22', 
+                    'sigma_33', 
+                    'dia_sigma_11', 
+                    'dia_sigma_22', 
+                    'dia_sigma_33', 
+                    'para_sigma_11', 
+                    'para_sigma_22', 
+                    'para_sigma_33', 
+                    'sigma_iso', 
+                    'nmr_functional', 
+                    'nmr_basis_set', 
                     'J_iso',
                     'J_FC_11',
                     'J_FC_22',
@@ -1711,8 +1788,7 @@ class MachineLearning(NONCOVToolbox):
                     'J_SD_11',
                     'J_SD_22',
                     'J_SD_33',
-                    'Bond order stuff, Wiberg',
-                    'Bond critical points',
+                    'Mayer_BO'
                         ]
         
         # Create the dataframe
