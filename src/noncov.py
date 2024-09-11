@@ -1251,23 +1251,25 @@ class OrcaAnalysis(NONCOVToolbox):
         return bond_orders
     
 
-    def extract_xyz_coords(self, property_files):
+    def extract_xyz_coords(self, splitted_output_file):
         """
         From each property file extract x,y,z coordinates and nuclear identity to append
         to Machine Learning database
+        :param: nuc_coords: list of nuclear Cartesian coordinates
         """
-        nuclear_identity = []
-        x_coord = []
-        y_coord = []
-        z_coord = []
+        nuc_coords = []
+
+        coords_list = []
 
         start_reading = False
 
-        with open(property_files, 'r') as f:
+        with open(splitted_output_file, 'r') as f:
             for line in f:
                 if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
                     start_reading = True
                     continue
+                if 'CARTESIAN COORDINATES (A.U.)' in line:
+                    break
 
                 if start_reading:
                     match = re.match(r'\s*([A-Z]+)\s*([-.\d]+)\s*([-.\d]+)\s*([-.\d]+)', line)
@@ -1278,15 +1280,20 @@ class OrcaAnalysis(NONCOVToolbox):
                         y = float(match.group(3))
                         z = float(match.group(4))
 
-                        atom_number = len(nuclear_identity)
+                        #atom_number = len(nuclear_identity)
 
-                        nuclear_identity.append(f'{atom_number}{element}')
-                        x_coord.append(x)
-                        y_coord.append(y)
-                        z_coord.append(z)
+                        coords = f'{element}: {x}, {y}, {z}'
+                        coords_list.append(coords)
+        
+        for coord in coords_list:
+            element, xyz = coord.split(':')
+            x, y, z = xyz.split(', ')
+            new_coord = f'{element} {x} {y} {z}'
+            nuc_coords.append(new_coord)
+        
+        nuc_coords = [re.split(r'\s+', row.strip()) for row in nuc_coords]
 
-        return nuclear_identity, x_coord, y_coord, z_coord
-
+        return nuc_coords
 
 # ------------------------------------------------------------------------------
 #                        MOLECULAR VISUALIZATION AND PLOTTING
