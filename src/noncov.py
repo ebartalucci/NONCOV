@@ -267,7 +267,7 @@ class NMRFunctions(NONCOVToolbox):
         antisym_shielding_tensor = NMRFunctions.antisymmetrize_tensor(shielding_tensor)
         print(f'Symmetric tensor is: \n{sym_shielding_tensor}\n')
         print(f'Antisymmetric tensor is. \n{antisym_shielding_tensor}\n')
-        print('Since antisymmetric part does not contribute to observable, skipping...\n')
+        print('Since antisymmetric part does not contribute to observable but only to relaxation, skipping...\n')
         print('Proceeding to diagonalization...\n')
 
         # Calculate eigenvalues and vectors 
@@ -883,6 +883,27 @@ class OrcaAnalysis(NONCOVToolbox):
             return f"File '{output_file}' not found."
         except Exception as e:
             return f"An error occurred: {str(e)}"
+        
+    def extract_molecule_names(self, filename):
+        """
+        Read the output (.mpi8.out) file from an ORCA calculation and extract list of molecules.
+        :param output_file: output file from orca in the form .mpi8.out
+        """
+        molecule_names = []
+
+        # Define the pattern to match lines starting with "* xyzfile" 
+        pattern = re.compile(r'\* xyzfile \d+ \d+ (\S+\.xyz)')
+
+        with open(filename, 'r') as file:
+
+            for line in file:
+                match = pattern.search(line)
+
+                if match:
+                    molecule_name = match.group(1)
+                    molecule_names.append(molecule_name)
+
+        return molecule_names
 
     def split_orca_output(self, scratch_dir, output_file):
         """
@@ -1244,19 +1265,20 @@ class OrcaAnalysis(NONCOVToolbox):
 
         with open(property_files, 'r') as f:
             for line in f:
-                if '!GEOMETRY!' in line:
+                if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
                     start_reading = True
                     continue
 
                 if start_reading:
-                    match = re.match(r'\s*(\d+)\s*([A-Z])\s*([-.\d]+)\s*([-.\d]+)\s*([-.\d]+)', line)
+                    match = re.match(r'\s*([A-Z]+)\s*([-.\d]+)\s*([-.\d]+)\s*([-.\d]+)', line)
 
                     if match:
-                        atom_number = match.group(1)
-                        element = match.group(2)
-                        x = float(match.group(3))
-                        y = float(match.group(4))
-                        z = float(match.group(5))
+                        element = match.group(1)
+                        x = float(match.group(2))
+                        y = float(match.group(3))
+                        z = float(match.group(4))
+
+                        atom_number = len(nuclear_identity)
 
                         nuclear_identity.append(f'{atom_number}{element}')
                         x_coord.append(x)
