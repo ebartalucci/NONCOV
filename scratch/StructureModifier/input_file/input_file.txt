@@ -16,4 +16,4 @@ $fragment1
 14
 15
 $displacement
-0.10
+0.25

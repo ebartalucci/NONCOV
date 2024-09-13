@@ -1677,10 +1677,10 @@ class StructureModifier(NONCOVToolbox):
         :param i: for the loop over displacements, specifies how many structures are generated. In future will be the dissociation limit value
         """
         displacement_direction /= np.linalg.norm(displacement_direction)  # Normalize the displacement direction vector
-        displacement_vector = - displacement_direction * displacement_step * i # Displace along the normalized direction
+        displacement_vector = displacement_direction * displacement_step * i # Displace along the normalized direction
         print(f'Displacement vector: {displacement_vector}')
         print(type(displacement_vector))
-        return coords1 - displacement_vector  # Apply displacement by adding the vector
+        return coords1 + displacement_vector  # Apply displacement by adding the vector
         
         # From olivia
         #displacement_vector = coords1 - displacement_direction * i  # displace along one axis 
@@ -1707,11 +1707,11 @@ class StructureModifier(NONCOVToolbox):
 
             # Write fixed fragment coordinates
             for i, atom in enumerate(coords_fixed):
-                f.write(f'{atom_identities[i+len(coords_displaced)]} {atom[0]:.6f} {atom[1]:.6f} {atom[2]:.6f}\n') # i+len(coord_fixed) to skip to the fixed fragment indices
+                f.write(f'{atom_identities[i]} {atom[0]:.6f} {atom[1]:.6f} {atom[2]:.6f}\n') 
             
             # Write displaced fragment coordinates
             for i, atom in enumerate(coords_displaced):
-                f.write(f'{atom_identities[i]} {atom[0]:.6f} {atom[1]:.6f} {atom[2]:.6f}\n') 
+                f.write(f'{atom_identities[i+len(coords_fixed)]} {atom[0]:.6f} {atom[1]:.6f} {atom[2]:.6f}\n') # i+len(coord_fixed) to skip to the fixed fragment indices
             
     #-------------------------------------------------------------------#
 

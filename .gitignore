@@ -1,7 +1,7 @@
 plot_sequential_NMR_properties/run_all_displaced_distances.mpi8.out
 NC2Ipy_app/node_modules
-scratch/PlotDFT/nmr_spectra
-test/data/run_all_displaced_distances.mpi8.out
-test/data/KLaL_cation_pi_RCCE_opt.mpi8.out
-scratch/OrcaAnalysis/split_orca_output
-scratch/OrcaAnalysis/test_tensor_plots
+test/test_data/
+test/test_data/
+scratch/OrcaAnalysis/
+scratch/StructureModifier/
+examples/
