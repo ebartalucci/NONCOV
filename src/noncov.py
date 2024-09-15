@@ -1143,8 +1143,6 @@ class OrcaAnalysis(NONCOVToolbox):
 
         return shielding_dia, shielding_para, shielding_tot, nuc_identity
     
-
-    # TO DO SECTION EXTRACT SCALAR COUPLINGS IF PRESENT
     def extract_j_coupling(self, n_nuclei, filename):
         
         column_labels = []

@@ -5,3 +5,5 @@ test/test_data/
 scratch/OrcaAnalysis/
 scratch/StructureModifier/
 examples/
+temp/
+scratch/PlotDFT/
