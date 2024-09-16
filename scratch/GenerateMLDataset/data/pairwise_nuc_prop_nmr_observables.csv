@@ -1,1 +1,1 @@
-Molecule,Atom_1,Atom_2,x_coord_1,y_coord_1,z_coord_1,x_coord_2,y_coord_2,z_coord_2,J_iso,J_FC_11,J_FC_22,J_FC_33,J_DSO_11,J_DSO_22,J_DSO_33,J_PSO_11,J_PSO_22,J_PSO_33,J_SD_11,J_SD_22,J_SD_33,Mayer_BO
+Molecule,Atom_1,Atom_2,r_12,x_coord_1,y_coord_1,z_coord_1,x_coord_2,y_coord_2,z_coord_2,J_iso,J_FC_11,J_FC_22,J_FC_33,J_DSO_11,J_DSO_22,J_DSO_33,J_PSO_11,J_PSO_22,J_PSO_33,J_SD_11,J_SD_22,J_SD_33,Mayer_BO
