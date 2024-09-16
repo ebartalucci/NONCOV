@@ -1143,76 +1143,99 @@ class OrcaAnalysis(NONCOVToolbox):
 
         return shielding_dia, shielding_para, shielding_tot, nuc_identity
     
-    def extract_j_coupling(self, n_nuclei, filename):
-        
-        column_labels = []
-        
-        data = []
-        
-        start_reading = False
-        
-        row_data = []
-        
-        rows_to_read = 0
-        
-        with open(filename, 'r') as file:
+    def extract_spin_spin_couplings(self, splitted_output_file):
+        # Dictionaries to store pairwise nuclear properties
+        r_AB = {}
+        ssDSO_matrices = {}
+        ssPSO_matrices = {}
+        ssFC_matrices = {}
+        ssSD_matrices = {}
+
+        try:
+            with open(splitted_output_file, 'r') as f:
+                lines = f.readlines()
             
-            for line in file:
-
-                if 'SUMMARY OF ISOTROPIC COUPLING CONSTANTS (Hz)' in line:
-                    start_reading = True
+            # Initialize variables to store data
+            current_nuc_pair = None
+            current_ssDSO = None
+            current_ssPSO = None
+            current_FC = None
+            current_SD = None
+            
+            start_search = False
+            
+            for i, line in enumerate(lines):
+                if '*** THE CP-SCF HAS CONVERGED ***' in line:
+                    start_search = True
                     continue
-
-                if 'Maximum memory used throughout the entire EPRNMR-calculation:' in line:
-                    break
                 
-                if start_reading:
-
-                    if not column_labels and re.search(r'\d+ [A-Z]', line):
-                        column_labels = re.findall(r'\d+ [A-Z]', line)
-                        rows_to_read = n_nuclei
-                        print(f"Column labels extracted: {column_labels}")
-                        continue
+                if start_search:
+                    line = line.strip()
                     
-                    # Accumulate data if we are reading rows
-                    if rows_to_read > 0:
-                        line_parts = line.split()
-                        
-                        if not line_parts:
-                            continue
-                        
-                        # Detect if this line contains row header and values
-                        if len(line_parts) > 2:
-                            row_nucleus = line_parts[0] + ' ' + line_parts[1]  # Y-axis nucleus
-                            values = line_parts[2:]
-                            
-                            # Combine current row data with new values
-                            if row_data:
-                                row_data[1].extend(values)
-                            else:
-                                row_data = [row_nucleus, values]
+                    # Extract nucleus information
+                    if 'NUCLEUS A =' in line:
+                        match = re.search(r'NUCLEUS A = (\w+)\s+(\d+) NUCLEUS B = (\w+)\s+(\d+)', line)
+                        if match:
+                            nucleus_a = f"{match.group(1)} {match.group(2)}"
+                            nucleus_b = f"{match.group(3)} {match.group(4)}"
+                            current_nuc_pair = (nucleus_a, nucleus_b)
+                    
+                    # Extract r(AB) value
+                    elif 'r(AB)' in line:
+                        match = re.search(r'r\(AB\) =\s+([\d\.]+)', line)
+                        if match:
+                            current_r_ab = float(match.group(1))
+                            r_AB[current_nuc_pair] = current_r_ab
+                    
+                    # Extract Diamagnetic tensor matrix
+                    elif line.startswith('Diamagnetic contribution (Hz)'):
+                        try:
+                            ssDSO_tensor_matrix = []
+                            for j in range(1, 4):
+                                ssDSO_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                            current_ssDSO = ssDSO_tensor_matrix
+                            ssDSO_matrices[current_nuc_pair] = current_ssDSO
+                        except (ValueError, IndexError):
+                            print('Error extracting Diamagnetic tensor components')
+                    
+                    # Extract Paramagnetic tensor matrix
+                    elif line.startswith('Paramagnetic contribution (Hz)'):
+                        try:
+                            ssPSO_tensor_matrix = []
+                            for j in range(1, 4):
+                                ssPSO_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                            current_ssPSO = ssPSO_tensor_matrix
+                            ssPSO_matrices[current_nuc_pair] = current_ssPSO
+                        except (ValueError, IndexError):
+                            print('Error extracting Paramagnetic tensor components')
+                    
+                    # Extract Fermi-contact tensor matrix
+                    elif line.startswith('Fermi-contact contribution (Hz)'):
+                        try:
+                            FC_tensor_matrix = []
+                            for j in range(1, 4):
+                                FC_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                            current_FC = FC_tensor_matrix
+                            ssFC_matrices[current_nuc_pair] = current_FC
+                        except (ValueError, IndexError):
+                            print('Error extracting Fermi-contact tensor components')
+                    
+                    # Extract Spin-dipolar tensor matrix
+                    elif line.startswith('Spin-dipolar contribution (Hz)'):
+                        try:
+                            SD_tensor_matrix = []
+                            for j in range(1, 4):
+                                SD_tensor_matrix.append([float(x) for x in lines[i+j].split()])
+                            current_SD = SD_tensor_matrix
+                            ssSD_matrices[current_nuc_pair] = current_SD
+                        except (ValueError, IndexError):
+                            print('Error extracting Spin-dipolar tensor components')
 
-                            # Check if we have a complete row
-                            if len(row_data[1]) >= len(column_labels):
-                                # Extract complete row data
-                                row_nucleus = row_data[0]
-                                values = row_data[1][:len(column_labels)]
-                                
-                                # Store row data
-                                data.append([row_nucleus] + [float(value) for value in values])
-                                
-                                # Reset row_data for the next row
-                                row_data = []
-                                rows_to_read -= 1
-                                if rows_to_read == 0:
-                                    continue
+        except FileNotFoundError:
+            print(f"File '{splitted_output_file}' not found.")
+            return {}, {}, {}, {}, {}, {}, {}
         
-        # Create DataFrame
-        df = pd.DataFrame(data, columns=['Nucleus'] + column_labels)
-        df.set_index('Nucleus', inplace=True)
-
-        return df
-
+        return r_AB, ssDSO_matrices, ssPSO_matrices, ssFC_matrices, ssSD_matrices
 
     def extract_mayer_bond_order(self, splitted_output_file):
         """
@@ -1248,7 +1271,6 @@ class OrcaAnalysis(NONCOVToolbox):
 
         return bond_orders
     
-
     def extract_xyz_coords(self, splitted_output_file):
         """
         From each property file extract x,y,z coordinates and nuclear identity to append
@@ -1818,6 +1840,7 @@ class MachineLearning(NONCOVToolbox):
         columns = ['Molecule', 
                     'Atom_1', 
                     'Atom_2',
+                    'r_12',
                     'x_coord_1', 
                     'y_coord_1', 
                     'z_coord_1', 
