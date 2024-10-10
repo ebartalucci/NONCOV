@@ -6,4 +6,6 @@ scratch/OrcaAnalysis/
 scratch/StructureModifier/
 examples/
 temp/
+tests/
+structs/
 scratch/PlotDFT/

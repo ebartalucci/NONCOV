@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  01.09.2024                 #
+#               Last:  08.10.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.0.1                       #
@@ -238,11 +238,11 @@ class NMRFunctions(NONCOVToolbox):
         Input
         :param shielding_tensor: tensor components in 3x3 chemical shielding matrix
         
-        Output
+        Output - only real components are taken into account
         :param shielding_tensor: original shielding tensor in matrix format
         :param diagonal_mehring: shielding tensor in PAS according to Mehring order
         :param diagonal_haberlen: shielding tensor in PAS according to Haberlen order
-        :param eigenvals: individual component
+        :param eigenvals: individual components
         :param s_iso: isotropic chemical shift
         :param eigenvecs: full diagonalized matrix in principal axis system according to |sigma_yy - sigma_iso| < |sigma_xx - sigma_iso| < |sigma_zz - sigma_iso|
         :param symmetry: individual component
@@ -317,8 +317,8 @@ class NMRFunctions(NONCOVToolbox):
         print('Proceeding to shielding tensor symmetry analysis...\n')
 
         # Extract symmetry of the tensor from its eigenvalues
-        unique_eigenvals = np.unique(np.round(eigenvals,7))
-        symmetry = len(eigenvals) - len(unique_eigenvals) 
+        unique_eigenvals = np.unique(np.round(np.real(eigenvals),7))
+        symmetry = len(np.real(eigenvals)) - len(unique_eigenvals) 
         print(f'Symmetry of the tensor based on eigenvals count is: {symmetry}\n')
         if symmetry == 0:
             print('which means that the tensor is completely anysotropic \n')
@@ -343,7 +343,21 @@ class NMRFunctions(NONCOVToolbox):
         is_rotationally_symmetric = np.array_equal(shielding_tensor, rotated_shielding_tensor)
         print(f'Rotational symmetry is: \n{is_rotationally_symmetric}\n')
         print('Proceeding...\n')
+        
+        print('Discard imaginary tensor components')
+        shielding_tensor = np.real(shielding_tensor)
+        s_iso = np.real(s_iso)
+        diagonal_mehring = np.real(diagonal_mehring)
+        diagonal_haberlen = np.real(diagonal_haberlen)
+        eigenvals = np.real(eigenvals)
+        
+        print(f'Shielding tensor: \n{shielding_tensor} \n')
+        print(f'Isotropic shielding: {s_iso} \n')
+        print(f'Mehring: \n{diagonal_mehring} \n')
+        print(f'Haberlen: \n{diagonal_haberlen} \n')
+        print(f'Unsorted Eigenvals: \n{eigenvals} \n')
 
+        print('Proceeding...\n')
         print('Call tensor_to_euler for Euler angles extraction from eigenvectors...\n')
 
         print("# -------------------------------------------------- #")
@@ -1325,90 +1339,6 @@ class MolView(NONCOVToolbox):
     def __init__(self):
         super().__init__()
 
-    def plot_3d_molecule(self, molecule_path, sizes=None):
-        """
-        Load and plot the molecular coordinates in 3D and display them according to standard CPK convention.
-        Basically a very time consuming way to do what Avogadro does but worse.. Need fixing 
-        :param molecule_path: path to the xyz file to load and display
-        :param sizes: <optional> define atomic radii for pure graphical display, if not defined when function is called, they are taken from
-        default (atomic radii [pm] * 5)
-        """
-        # --------------------------------------------------------------------------------------------#
-        # 3D Molecular representation plot
-        # Define CPK coloring representation for atom types: https://en.wikipedia.org/wiki/CPK_coloring
-        cpk_colors = {
-            'H': 'grey',
-            'C': 'black',
-            'O': 'red',
-            'N': 'blue',
-            'S': 'yellow',
-            'P': 'purple',
-            'F': 'cyan',
-            'Cl': 'green',
-            'Br': 'darkred',
-            'I': 'pink',
-            'Co': 'silver',
-            'Fe': 'silver',
-            'Ni': 'silver',
-            'Cu': 'silver'
-        }
-
-        # Default empirical sizes (picometers*5) for atomic radii: https://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)
-        if sizes is None:
-            sizes = {
-                'H': 25*5,
-                'C': 70*5,
-                'O': 60*5,
-                'N': 65*5,
-                'S': 100*5,
-                'P': 100*5,
-                'F': 50*5,
-                'Cl': 100*5,
-                'Br': 115*5,
-                'I': 140*5,
-                'Co': 135*5,
-                'Fe': 140*5,
-                'Ni': 135*5,
-                'Cu': 135*5
-            }
-
-        # Read XYZ molecular coordinates from the file
-        with open(molecule_path, 'r') as file:
-            lines = file.readlines()
-
-        num_atoms = int(lines[0])
-        coordinates = []
-        atom_types = []
-
-        for line in lines[2:]:
-            parts = line.split()
-            atom_type = parts[0]
-            x, y, z = map(float, parts[1:])
-            coordinates.append([x, y, z])
-            atom_types.append(atom_type)
-
-        coordinates = np.array(coordinates)
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        for i in range(num_atoms):
-            ax.scatter(coordinates[i, 0], coordinates[i, 1], coordinates[i, 2], c=cpk_colors[atom_types[i]], s=sizes[atom_types[i]])
-
-        # Connect atoms with bonds if the distance between atom pairs is less than 1.7A - need to adjust a bit especially for short distances
-        for i in range(num_atoms):
-            for j in range(i + 1, num_atoms):
-                if np.linalg.norm(coordinates[i] - coordinates[j]) < 1.7:  # Bond length threshold
-                    ax.plot([coordinates[i, 0], coordinates[j, 0]], [coordinates[i, 1], coordinates[j, 1]], [coordinates[i, 2], coordinates[j, 2]], color='grey')
-
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-
-        ax.grid(False)  # Remove the grid background
-
-        plt.show()
-
     def radiusovaloid(self, sxx, syy, szz, alpha, beta, gamma, theta, phi):
         '''
         to check
@@ -1586,6 +1516,7 @@ class StructureModifier(NONCOVToolbox):
     Take an input structure with two fragments and displace along centroid vector
      General remarks:
      - only works for displacing two fragments
+     - you can request NormalToPlane displacement or CentroidToCentroid displacement
      - if cartesian coordinates in input file are negative, you will have a negative 
        displacement vector, please fix accordingly
     """
@@ -1806,23 +1737,25 @@ class MachineLearning(NONCOVToolbox):
     
     def make_empty_nuc_prop_df(self, output_csv_path):
         # Headers of features = number of columns
-        columns = ['Molecule', 
+        columns = ['Molecule', #flag
                     'Atom', 
-                    'x_coord', 
-                    'y_coord', 
-                    'z_coord', 
+                    'x_coord', #input to GNN
+                    'y_coord', #input to GNN
+                    'z_coord', #input to GNN
                     'sigma_iso',
-                    'sigma_11', 
-                    'sigma_22', 
-                    'sigma_33', 
-                    'dia_sigma_11', 
-                    'dia_sigma_22', 
-                    'dia_sigma_33', 
-                    'para_sigma_11', 
-                    'para_sigma_22', 
-                    'para_sigma_33',  
-                    'nmr_functional', 
-                    'nmr_basis_set', 
+                    'sigma_xx', #unsorted
+                    'sigma_yy', #unsorted
+                    'sigma_zz', #unsorted
+                    'dia_sigma_xx', 
+                    'dia_sigma_yy', 
+                    'dia_sigma_zz', 
+                    'para_sigma_xx', 
+                    'para_sigma_yy', 
+                    'para_sigma_zz', 
+                    'sigma_11', #mehring
+                    'sigma_22', #mehring
+                    'sigma_33', #mehring
+                    's_tot_symmetry'
                     ]
         
         # Create the dataframe
@@ -1848,18 +1781,18 @@ class MachineLearning(NONCOVToolbox):
                     'y_coord_2', 
                     'z_coord_2',
                     'J_iso',
-                    'J_FC_11',
-                    'J_FC_22',
-                    'J_FC_33',
-                    'J_DSO_11',
-                    'J_DSO_22',
-                    'J_DSO_33',
-                    'J_PSO_11',
-                    'J_PSO_22',
-                    'J_PSO_33',
-                    'J_SD_11',
-                    'J_SD_22',
-                    'J_SD_33',
+                    'J_FC_xx',
+                    'J_FC_yy',
+                    'J_FC_zz',
+                    'J_DSO_xx',
+                    'J_DSO_yy',
+                    'J_DSO_zz',
+                    'J_PSO_xx',
+                    'J_PSO_yy',
+                    'J_PSO_zz',
+                    'J_SD_xx',
+                    'J_SD_yy',
+                    'J_SD_zz',
                     'Mayer_BO' 
                     ]
         
