@@ -232,20 +232,23 @@ class NMRFunctions(NONCOVToolbox):
         super().__init__()
 
     # 3x3 Matrix diagonalization and PAS shielding tensor ordering in Mehring and Haberlen conventions
-    def diagonalize_tensor(self, shielding_tensor):
+    def test_diagonalize_tensor(self, shielding_tensor):
         """
-        Take NMR tensor elements as input and perform various operations, including diagonalization and ordering according to Mehring and Haberlen formalisms.
+        Take NMR shielding tensor as input and perform various operations, 
+        including diagonalization and ordering according to various formalisms.
+        
         Input
         :param shielding_tensor: tensor components in 3x3 chemical shielding matrix
         
-        Output - only real components are taken into account
-        :param shielding_tensor: original shielding tensor in matrix format
-        :param diagonal_mehring: shielding tensor in PAS according to Mehring order
-        :param diagonal_haberlen: shielding tensor in PAS according to Haberlen order
-        :param eigenvals: individual components
-        :param s_iso: isotropic chemical shift
-        :param eigenvecs: full diagonalized matrix in principal axis system according to |sigma_yy - sigma_iso| < |sigma_xx - sigma_iso| < |sigma_zz - sigma_iso|
-        :param symmetry: individual component
+        Output 
+        :param shielding_tensor: original shielding tensor in molecular frame
+        :param s_iso: isotropic chemical shift from symmetrized tensor
+        :param diagonal_mehring: PAS components with magnitude ordering (IUPAC)
+        :param eigenvals: unsorted PAS components
+        :param eigenvecs: rotation matrix
+        :param symmetry: second-rank tensor symmetry
+        :param span: maximum width of the powder pattern
+        :param skew: amount and orientation of the asymmetry of the tensor
         """
 
         # Notify user which module has been called
@@ -271,7 +274,7 @@ class NMRFunctions(NONCOVToolbox):
         print('Proceeding to diagonalization...\n')
 
         # Calculate eigenvalues and vectors 
-        eigenvals, eigenvecs = np.linalg.eig(shielding_tensor)
+        eigenvals, eigenvecs = np.linalg.eig(sym_shielding_tensor)
         eigenvals = eigenvals.round(2) # round them up
         eigenvecs = eigenvecs.round(2) # round them up
         print(f'Eigenvalues are: {eigenvals}, Eigenvectors are: \n{eigenvecs}\n')
@@ -293,17 +296,6 @@ class NMRFunctions(NONCOVToolbox):
         s_iso = np.sum(np.diag(diagonal)) / 3
         s_iso = s_iso.round(2)
         print(f'Isotropic shift is: {s_iso} ppm')
-        print('Proceeding to Haberlen ordering...\n')
-
-        # Reorder matrix according to Haberlen convention
-        diagonal_haberlen = np.argsort(np.diag(diagonal) - s_iso)
-        diagonal_haberlen = np.diag(diagonal)[diagonal_haberlen]
-        sigma_XX = diagonal_haberlen[0]
-        sigma_YY = diagonal_haberlen[1]
-        sigma_ZZ = diagonal_haberlen[2]
-        diagonal_haberlen = np.diag(diagonal_haberlen)
-        print(f'Diagonal tensor in Haberlen order is: \n{diagonal_haberlen}\n')
-        print(f'''where:\n \u03C3_XX:{sigma_XX} \n \u03C3_YY:{sigma_YY} \n \u03C3_ZZ:{sigma_ZZ}''')
         print('Proceeding to Mehring ordering...\n')
 
         # Reorder matrix according to Mehring convention
@@ -342,19 +334,19 @@ class NMRFunctions(NONCOVToolbox):
         print(f'180 degrees rotation results in the tensor: \n{rotated_shielding_tensor}\n')
         is_rotationally_symmetric = np.array_equal(shielding_tensor, rotated_shielding_tensor)
         print(f'Rotational symmetry is: \n{is_rotationally_symmetric}\n')
-        print('Proceeding...\n')
+        print('Proceeding to compute span and skew of the tensor...\n')
         
-        print('Discard imaginary tensor components')
-        shielding_tensor = np.real(shielding_tensor)
-        s_iso = np.real(s_iso)
-        diagonal_mehring = np.real(diagonal_mehring)
-        diagonal_haberlen = np.real(diagonal_haberlen)
-        eigenvals = np.real(eigenvals)
+        span = sigma_33 - sigma_11
+        span = span.round(2)
+        skew = 3*(sigma_22-s_iso)/span
+        skew = skew.round(2)
+        print(f'Span is: {span}\n')
+        print(f'Skew is: {skew}\n')
         
+        print('Summary:\n')
         print(f'Shielding tensor: \n{shielding_tensor} \n')
         print(f'Isotropic shielding: {s_iso} \n')
         print(f'Mehring: \n{diagonal_mehring} \n')
-        print(f'Haberlen: \n{diagonal_haberlen} \n')
         print(f'Unsorted Eigenvals: \n{eigenvals} \n')
 
         print('Proceeding...\n')
@@ -362,7 +354,8 @@ class NMRFunctions(NONCOVToolbox):
 
         print("# -------------------------------------------------- #")
 
-        return shielding_tensor, s_iso, diagonal_mehring, diagonal_haberlen, eigenvals, eigenvecs, symmetry
+        return shielding_tensor, s_iso, diagonal_mehring, eigenvals, eigenvecs, symmetry, span, skew
+
     
     # Backcalculate Euler angles from eigenvector matrix
     def tensor_to_euler(self, shielding_tensor, eigenvals, eigenvecs, symmetry, rotation_mode, order): 
