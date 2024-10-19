@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  08.10.2024                 #
+#               Last:  17.10.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.0.1                       #
@@ -72,6 +72,10 @@ class NONCOVHeader:
             print("Working python version:")
             print(sys.version)
             print('\n')
+            
+            # Disclaimer
+            print('Please keep in mind that the ORCAAnalysis module \n')
+            print('only works with ORCA 6 due to parsing settings. \n')
 
             # Print acknowledgments
             try:
@@ -91,135 +95,6 @@ class NONCOVHeader:
                 sys.exit(1)
 
             NONCOVHeader._printed = True
-
-# ------------------------------------------------------------------------------
-#                           BIOMOLECULAR APPLICATIONS                          #
-# ------------------------------------------------------------------------------
-class AminoStat(NONCOVToolbox):
-    """
-    Collection of useful functions for working with proteins and sequences.
-    """
-    def __init__(self):
-        super().__init__()
-
-    def space_prot_seq(self, prot_seq, spaced_prot_seq):
-        """
-        Take a sequence and add a space between each letter
-        :param prot_seq: original protein sequence from Uniprot 
-        :param spaced_prot_seq: path to where you want to write it
-        """
-        try:
-            with open(prot_seq, 'r') as f:
-                sequence = f.read()
-
-            spaced_sequence = ' '.join(sequence)
-
-            with open(spaced_prot_seq, 'w') as f:
-                f.write(spaced_sequence)
-
-            print(f'Protein sequence from Uniprot now contains spaces between each amino acid letter and has been written to: {spaced_prot_seq}.')
-
-        except FileNotFoundError:
-            print('Input file not found, please specify')
-        except Exception as e:
-            print(f'An error occurred: {e}')
-
-    def count_amino_acids(self, prot_seq, count_file):
-        """
-        Take spaced sequence and count how many of each amino acids you have
-        :param prot_seq: sequence with spacings
-        :param count_file: path to where you want to save the count file
-        """
-        try:
-            with open(prot_seq, 'r') as f:
-                sequence = f.read()
-
-            amino_acid_count = {}
-            for amino_acid in sequence:
-                if amino_acid in amino_acid_count:
-                    amino_acid_count[amino_acid] += 1
-                else:
-                    amino_acid_count[amino_acid] = 1
-
-            with open(count_file, 'w') as f:
-                for amino_acid, count in amino_acid_count.items():
-                    f.write(f"{amino_acid}: {count}\n")
-
-            print('Amino acid counts written to amino_acid_count.txt')
-
-        except FileNotFoundError:
-            print('Input file not found. please specify')
-        except Exception as e:
-            print(f'An error occurred: {e}')
-
-    def plot_amino_acid_statistics(self, count_file, plot_file):
-        """
-        Take the count of the amino acids and plot the histogram of the distribution
-        :param count_file: file containing the amino acids count
-        :param plot_file: path to where you want the plot to be saved
-        """
-        try:
-            amino_acid_counts = {}
-            total_count = 0
-
-            with open(count_file, 'r') as f:
-                for line in f:
-                    pairs = line.strip().split(': ')
-                    if len(pairs) == 2:
-                        amino_acid, count = pairs
-                        amino_acid_counts[amino_acid] = int(count)
-                        total_count += int(count)
-
-            amino_acids = list(amino_acid_counts.keys())
-            counts = list(amino_acid_counts.values())
-
-            percentages = [count / total_count * 100 for count in counts]
-
-            plt.bar(amino_acids, percentages)
-            plt.xlabel('Amino Acid')
-            plt.ylabel('Percentage (%)')
-            plt.title('Amino Acids Distribution')
-
-            for i in range(len(amino_acids)):
-                plt.text(amino_acids[i], percentages[i], f"{counts[i]} ({percentages[i]:.2f}%)", ha='center', va='bottom', rotation=90)
-
-            plt.savefig(plot_file)
-            plt.show()
-            
-        except FileNotFoundError:
-            print('Count file not found. please specify')
-        except Exception as e:
-            print(f'An error occurred: {e}')
-
-    def calculate_amino_acid_percentage(self, prot_seq):
-        amino_acids_list = "ARNDCEQGHILKMFPSTWYV"  # List of 20 standard amino acids
-        aa_percentage = {aa: prot_seq.count(aa) for aa in amino_acids_list}
-        return aa_percentage
-
-    def define_protein_domains(self):
-        """
-        Users defines the limit and names of the domains of the protein
-        """
-        
-        print('Please define your domains according to Uniprot information.')
-        try:
-            n_domains = int(input('How many domains does your protein have? '))
-
-            prot_domain_names = []
-            prot_domain_boundaries = []
-
-            for i in range(n_domains):
-                prot_domain_name = input(f'Enter name of domain {i+1}: ')
-                prot_domain_boundary = input(f'Enter boundaries for domain {i+1} position: ')
-
-                prot_domain_names.append(prot_domain_name)
-                prot_domain_boundaries.append(prot_domain_boundary)
-
-            print(f'The domains of your protein are: {prot_domain_names} in regions {prot_domain_boundaries}')
-        except Exception as e:
-            print(f'An error occurred: {e}')
-            
-            # continue here with sequence walk
 
 # ------------------------------------------------------------------------------
 #                        NMR FUNCTIONS AND APPLICATIONS 
@@ -343,11 +218,13 @@ class NMRFunctions(NONCOVToolbox):
         print(f'Span is: {span}\n')
         print(f'Skew is: {skew}\n')
         
-        print('Summary:\n')
+        print('Summary of NMR parameters:\n')
         print(f'Shielding tensor: \n{shielding_tensor} \n')
         print(f'Isotropic shielding: {s_iso} \n')
         print(f'Mehring: \n{diagonal_mehring} \n')
         print(f'Unsorted Eigenvals: \n{eigenvals} \n')
+        print(f'Span is: {span}\n')
+        print(f'Skew is: {skew}\n')
 
         print('Proceeding...\n')
         print('Call tensor_to_euler for Euler angles extraction from eigenvectors...\n')
@@ -849,10 +726,24 @@ class OrcaAnalysis(NONCOVToolbox):
             lines = f.readlines()
             count = 0
             for line in lines:
-                if line.strip().startswith("$$$$$$$$$$$$$$$$  JOB NUMBER"):
+                if line.strip().startswith("COMPOUND JOB"):
                     count += 1
             return count
 
+    def count_convergence(self, output_file):
+        """
+        Read the output (.mpi8.out) file from an ORCA calculation and count how many times the geometry converged.
+        :param output_file: output file from orca in the form .mpi8.out
+        """
+        with open(output_file, 'r', encoding='utf-8') as f:
+            # Count number of converged geometries in output file
+            lines = f.readlines()
+            count = 0
+            for line in lines:
+                if line.strip().startswith("HURRAY"):
+                    count += 1
+            return count        
+        
     def extract_level_of_theory(self, output_file):
         """
         Read the output (.mpi8.out) file from an ORCA calculation and extract level of theory.
@@ -899,7 +790,7 @@ class OrcaAnalysis(NONCOVToolbox):
         molecule_names = []
 
         # Define the pattern to match lines starting with "* xyzfile" 
-        pattern = re.compile(r'\* xyzfile \d+ \d+ (\S+\.xyz)')
+        pattern = re.compile(r'\|\s*\d+>\s*\* xyzfile -?\d+ \d+ (\S+\.xyz)')
 
         with open(filename, 'r') as file:
 
@@ -924,7 +815,7 @@ class OrcaAnalysis(NONCOVToolbox):
             return 
 
         # Make use of RegEx for matching JOB lines
-        job_matching = re.compile(r'\$+\s*JOB\s+NUMBER\s+(\d+) \$+')
+        job_matching = re.compile(r'COMPOUND\s+JOB\s+(\d+)')
 
         # Extract initial ORCA text before job files to append to splitted files
         initial_content = self.extract_initial_output_content(output_file, job_matching)
@@ -987,65 +878,6 @@ class OrcaAnalysis(NONCOVToolbox):
                 initial_content.append(line) # and append to file
         return initial_content
     
-    def set_noncov_interactions(self):
-        # Display possible options to the user
-        # Adjust based on the number of noncovalent interactions you want
-        print("Plot NONCOV effective distances options:")
-        print("1. Cation-pi")
-        print("2. Anion-pi")
-        print("3. pi-pi")
-        print("4. H-bond")
-        print("5. Polar-pi")
-        print("6. n-pi*")
-        print("7. London dispersion")
-        print("Press Enter to skip")
-
-        # Get user input and validate
-        while True:
-            user_input = input("Enter your choice of NONCOV type please (1-7): ")
-            
-            if user_input == "": # skip the settings of noncov interaction distance
-                return None
-            
-            try:
-                user_choice = int(user_input)
-                if 1 <= user_choice <= 7:
-                    return user_choice
-                else:
-                    print("Invalid choice. Please enter a number between 1 and 7.")
-            except ValueError:
-                print("Invalid input. Please enter a valid number.")
-
-    def set_boundary_distance_values(self, user_choice):
-        # Skip if user doesnt chose
-        if user_choice is None:
-            return None, None
-
-        # Set min and max effective distance values in Angstroem based on user's choice
-        if user_choice == 1: # Cation-pi interaction from https://doi.org/10.1016%2Fj.jmb.2021.167035
-            return 2, 6
-        elif user_choice == 2: # Anion-pi interaction from https://doi.org/10.1039%2Fc5sc01386k
-            return 2, 5
-        elif user_choice == 3: # pi-pi interaction
-            return 1, 5
-        elif user_choice == 4: # H-bond interaction from https://doi.org/10.1016/B978-012486052-0/50005-1
-            return 2.7, 3.3
-        elif user_choice == 5: # Polar-pi interaction
-            return 1, 5
-        elif user_choice == 6: # n-pi* interaction
-            return 1, 5
-        elif user_choice == 7: # London dispersion interaction
-            return 1, 5
-        
-    def run_boundary_checks(self):
-        noncov_type = self.set_noncov_interactions()
-        min_distance_value, max_distance_value = self.set_boundary_distance_values(noncov_type)
-
-        if min_distance_value is None and max_distance_value is None:
-            print("No interaction has been set, proceding as default")
-
-        else:
-            print(f"Selected boundary distance values / Å: min={min_distance_value}, max={max_distance_value}")
 
     def extract_tensor_data(self, splitted_output_file):
         """
@@ -1081,7 +913,7 @@ class OrcaAnalysis(NONCOVToolbox):
 
             for i, line in enumerate(lines):
                 # Start searching after encountering the CHEMICAL SHIFTS flag
-                if 'CHEMICAL SHIFTS' in line:
+                if 'CHEMICAL SHIELDINGS (ppm)' in line:
                     start_search = True
                     continue
 
@@ -1277,6 +1109,13 @@ class OrcaAnalysis(NONCOVToolbox):
                         bond_orders[nucleus2].append((nucleus1, bond_order_value))
 
         return bond_orders
+    
+    # Here extract NCS analysis data
+    
+    # Here extract NPA data
+    
+    # Here extract NBO data
+    
     
     def extract_xyz_coords(self, splitted_output_file):
         """
@@ -1506,17 +1345,31 @@ class MolView(NONCOVToolbox):
 # ------------------------------------------------------------------------------
 class StructureModifier(NONCOVToolbox):
     """
-    Take an input structure with two fragments and displace along centroid vector
+    Take an input structure with two fragments and displace one fragment away.
      General remarks:
      - only works for displacing two fragments
-     - you can request NormalToPlane displacement or CentroidToCentroid displacement
-     - if cartesian coordinates in input file are negative, you will have a negative 
-       displacement vector, please fix accordingly
+     - request NormaltoPlane when there is an aromatic moiety. This will displace
+       $fragment2 away in the direction of the normal to the aromatic plane
+     - request CentroidtoCentroid for the other cases. This will displace the
+       two fragments away from each other in the direction connecting the two
+       centroids. If the initial coords are negative it can be that the direction
+       is also negative, please act accordingly.
     """
     def __init__(self):
         super().__init__()
     
-    # SECTION 1: READING XYZ ATOMIC COORDINATES FROM FILE AND SPLIT THE FRAGMENTS
+    #-------------------------------------------------------------------#
+    
+    def UserChoice(self, mode):
+        """User selects either NormaltoPlane or CentroidtoCentroid
+           :param mode: 'CentroidtoCentroid' or 'NormaltoPlane'
+        """
+        print(f'You selected: {mode}\n')
+        
+        return mode
+    
+    #-------------------------------------------------------------------#
+
     def read_atomic_coord(self, file_path):
         """
         This function reads the geometry optimized atomic coordinates of the two fragments
@@ -1540,7 +1393,6 @@ class StructureModifier(NONCOVToolbox):
 
     #-------------------------------------------------------------------#
 
-    # SECTION 2: CALCULATION OF CENTROIDS AND STORING VALUES IN FILE
     def calculate_centroids(self, coordinates):
         """
         This function computes centroids for the defined fragments.
@@ -1566,7 +1418,6 @@ class StructureModifier(NONCOVToolbox):
 
     #-------------------------------------------------------------------#
 
-    # SECTION 3: CHECKPOINT COMPUTE TOPOLOGY AND K-NEAREST CLUSTERING FOR MOLECULAR CENTROIDS
     def plot_starting_molecular_fragments(self, coords1, coords2, centroids):
         """
         Plot the initial molecular fragments in 3D
@@ -1583,7 +1434,6 @@ class StructureModifier(NONCOVToolbox):
 
     #-------------------------------------------------------------------#
 
-    # SECTION 4: READ USER PROVIDED INPUT FILE, SPLIT AND ASSIGN MOLECULAR FRAGMENTS TO INDIVIDUAL MOLECULES
     def assign_molecule_fragments(self, coordinates, input_file):
         """
         Assign the respective fragments to atom in xyz list
@@ -1594,24 +1444,29 @@ class StructureModifier(NONCOVToolbox):
             lines = f.readlines()
             fragment1_indices = []
             fragment2_indices = []
+            ring_frag1_indices = []
             current_fragment = None
             for line in lines:
                 if line.strip() == "$fragment1":
                     current_fragment = fragment1_indices
                 elif line.strip() == "$fragment2":
                     current_fragment = fragment2_indices
+                elif line.strip() == "$ring_frag1":
+                    current_fragment = ring_frag1_indices                   
                 elif line.strip() == "$displacement":
+                    break
+                elif line.strip() == "$diss_lim":
                     break
                 else:
                     index = int(line.strip()) - 1  # Convert 1-based index to 0-based index
                     current_fragment.append(index)    
         coords1 = coordinates[fragment1_indices]
         coords2 = coordinates[fragment2_indices]
-        return coords1, coords2
+        ring_coords = coordinates[ring_frag1_indices]
+        return coords1, coords2, ring_coords
 
     #-------------------------------------------------------------------#
 
-    # SECTION 5: DISPLACE THE TWO FRAGMENT ALONG THE CENTROID LINE MOVING ONE AND FIXING THE OTHER
     def displace_fragment(self, coords1, displacement_direction, displacement_step, i):
         """
         This function displaces the fragment along the displacement_direction vector.
@@ -1621,20 +1476,12 @@ class StructureModifier(NONCOVToolbox):
         :param i: for the loop over displacements, specifies how many structures are generated. In future will be the dissociation limit value
         """
         displacement_direction /= np.linalg.norm(displacement_direction)  # Normalize the displacement direction vector
-        displacement_vector = displacement_direction * displacement_step * i # Displace along the normalized direction
-        print(f'Displacement vector: {displacement_vector}')
-        print(type(displacement_vector))
+        displacement_vector = - displacement_direction * displacement_step * i # Displace along the normalized direction
+
         return coords1 + displacement_vector  # Apply displacement by adding the vector
-        
-        # From olivia
-        #displacement_vector = coords1 - displacement_direction * i  # displace along one axis 
-        #print(f'Displacement vector:{displacement_vector}') # write this to log file
-        #print(type(displacement_vector)) # write this to log file
-        #return displacement_vector
 
     #-------------------------------------------------------------------#
 
-    # SECTION 6: WRITE NEW DISPLACED COORDINATES TO FILES
     def write_displaced_xyz_file(self, file_path, coords_fixed, coords_displaced, atom_identities):
         """
         This function writes both the fixed and displaced coordinates to an XYZ file.
@@ -1659,7 +1506,6 @@ class StructureModifier(NONCOVToolbox):
             
     #-------------------------------------------------------------------#
 
-    # SECTION 7: count fragments for K-means clustering
     def count_fragments(self, input_file):
         with open(input_file, 'r') as f:
             lines = f.readlines()
@@ -1670,8 +1516,9 @@ class StructureModifier(NONCOVToolbox):
             return count
 
     #-------------------------------------------------------------------#
+    #                 CENTROIDTOCENTROID FUNCTIONS
+    #-------------------------------------------------------------------#
 
-    # SECTION 8: COMPUTE DISTANCE OF DISPLACED ATOMS FROM FIXED CENTROID
     def compute_distance_from_centroid(self, coord_displaced, centroids):
         """
         Calculate relative centroid distances for future analysis
@@ -1695,7 +1542,6 @@ class StructureModifier(NONCOVToolbox):
 
     #-------------------------------------------------------------------#
 
-    # SECTION 9: WRITE DISTANCES TO FILES
     def write_distances_file(self, file_path, coords_displaced, distance_to_centroid, atom_identities, displacement_step):
         """
         This function writes the distances between fixed centroid and displaced coordinates to a file.
@@ -1717,7 +1563,122 @@ class StructureModifier(NONCOVToolbox):
             for i, atom in enumerate(coords_displaced):
                 f.write(f'{atom_identities[i]} {distance_to_centroid[i]}\n') 
 
-    
+    #-------------------------------------------------------------------#
+    #                    NORMALTOPLANE FUNCTIONS
+    #-------------------------------------------------------------------#
+    @staticmethod
+    def get_norm_arom_plane(ring_coords, moving_frag_centroid, tolerance=1e-1):
+        """
+        Compute the normal vector to a plane defined by three points. In this case
+        the three aromatic carbons are chosen so that the resulting two vectors share
+        the same origin.
+        
+        :param ring_coords: Coordinates of the six carbon atoms from the ring
+        :param moving_frag_centroid: coordinates of the centroid of the fragment you want to move
+        :param tolerance: specifies in Angstroem how much tolerance to complanarity the nuclei have
+        """
+
+        if len(ring_coords) < 3:
+            raise ValueError("At least 3 points are required to define a plane.")
+
+        # Calculate the centroid of the ring
+        ring_centroid = StructureModifier.calculate_centroid(ring_coords)
+
+        # Select any 3 non-collinear points from the ring to calculate normal vector
+        vec1 = ring_coords[1] - ring_coords[0]
+        vec2 = ring_coords[3] - ring_coords[0]
+
+        # Compute the normal using the cross product
+        normal_dir = np.cross(vec1, vec2)
+
+        # Normalize the normal vector
+        normal_dir /= np.linalg.norm(normal_dir)
+
+        # Vector from ring centroid to moving fragment centroid
+        vector_to_moving_frag = moving_frag_centroid - ring_centroid
+
+        # Distance between the moving fragment centroid and the center of the aromatic ring
+        distance_centroid_aromatics = np.linalg.norm(moving_frag_centroid - ring_centroid)
+        distance_centroid_aromatics = distance_centroid_aromatics.round(2)
+
+        print(f'Initial distance Centroid to Aromatic is: {distance_centroid_aromatics} Angstroms\n')
+
+        # Check the direction of the normal vector, if they dont match, flip it
+        if np.dot(normal_dir, vector_to_moving_frag) < 0:
+            normal_dir = -normal_dir
+
+        return normal_dir, ring_centroid
+
+        #-------------------------------------------------------------------#
+    @staticmethod
+    def calculate_centroid(coords):
+        """
+        Get center of mass of any sets of coordinates.
+        
+        :param coords: coordinates you want to compute
+        """
+        return np.mean(coords, axis=0)
+
+        #-------------------------------------------------------------------#
+    @staticmethod
+    def displace_fragment_along_normal(fragment_coords, normal_dir, displacement_step, diss_lim):
+        """
+        Displace the fragment 2 along the normal direction with respect to the plane for given set 
+        of parameters
+        
+        :param fragment_coords: coordinates of the fragment to be displaced
+        :param normal_dir: direction of displacement
+        :param displacement_step: user defined value in Angstroem. You can find it in the input files
+        :param: diss_lim: Dissociation limit user defined. Also in the input file
+        """
+        displaced_fragments = []
+
+        for i in range(0, diss_lim):
+
+            # Displace all fragment 2 atoms by the same step
+            displaced_fragment = fragment_coords + normal_dir * displacement_step * (i + 1)
+            displaced_fragments.append(displaced_fragment)
+
+        return np.array(displaced_fragments)
+
+        #-------------------------------------------------------------------#
+
+    def NormaltoPlane(self, coords1, coords2, ring_coords, output_dir, molecule_name, diss_lim, displacement_step, atom_identities):
+        """
+        Take as input the two fragments and the ring coordinates and apply the 
+        displacement transformations. Write to files at the end.
+        
+        :param coords1: Coordinates of the fixed fragment
+        :param coords2: coordinates of the moving fragment
+        :param ring_coords: subset of coords1 containing ring coordinates
+        :param output_dir: where you want the structures to be saved
+        :param molecule_name: name of the molecule you are displacing, needed it for saving files
+        """
+
+        # Calculate the centroid of fragment 2
+        moving_frag_centroid = StructureModifier.calculate_centroid(coords2)
+
+        try:
+            # Calculate the normal vector and centroid of the plane for fragment 1 (ring)
+            normal_dir, ring_centroid = StructureModifier.get_norm_arom_plane(ring_coords, moving_frag_centroid)
+
+            # Displace the fragment 2 coordinates along the normal direction
+            displaced_fragments = StructureModifier.displace_fragment_along_normal(coords2, normal_dir, displacement_step, diss_lim)
+
+            # Save the coordinates for each displacement step
+            for i, displaced_fragment in enumerate(displaced_fragments):
+
+                # Write displaced structure to file
+                output_file = os.path.join(output_dir, f'{molecule_name}_disp_struct_{i}.xyz')
+                self.write_displaced_xyz_file(output_file, coords1, displaced_fragment, atom_identities)
+
+            # Return the final displaced coordinates of fragment 2
+            final_fragment_coords = displaced_fragments[-1]
+            return final_fragment_coords
+
+        except ValueError as e:
+            print(e)
+
 # ------------------------------------------------------------------------------
 #               GENERATE A DATASET FOR MACHINE LEARNING APPLICATIONS
 # ------------------------------------------------------------------------------ 
@@ -1728,7 +1689,7 @@ class MachineLearning(NONCOVToolbox):
     def __init__(self):
         super().__init__()
     
-    def make_empty_nuc_prop_df(self, output_csv_path):
+    def make_empty_nuc_prop_df(self, output_csv_path, db_name):
         # Headers of features = number of columns
         columns = ['Molecule', #flag
                     'Atom', 
@@ -1739,21 +1700,23 @@ class MachineLearning(NONCOVToolbox):
                     'sigma_xx', #unsorted
                     'sigma_yy', #unsorted
                     'sigma_zz', #unsorted
-                    'dia_sigma_xx', 
-                    'dia_sigma_yy', 
-                    'dia_sigma_zz', 
-                    'para_sigma_xx', 
-                    'para_sigma_yy', 
-                    'para_sigma_zz', 
-                    'sigma_11', #mehring
-                    'sigma_22', #mehring
-                    'sigma_33', #mehring
-                    's_tot_symmetry'
+                    'dia_sigma_xx', #unsorted
+                    'dia_sigma_yy', #unsorted
+                    'dia_sigma_zz', #unsorted
+                    'para_sigma_xx', #unsorted
+                    'para_sigma_yy', #unsorted
+                    'para_sigma_zz', #unsorted
+                    'sigma_11', #mehring - magnitude sort
+                    'sigma_22', #mehring - magnitude sort
+                    'sigma_33', #mehring - magnitude sort
+                    's_tot_symmetry',
+                    'span',
+                    'skew'
                     ]
         
         # Create the dataframe
         df = pd.DataFrame(columns=columns)
-        df_out = os.path.join(output_csv_path, 'nuc_prop_nmr_observables.csv')
+        df_out = os.path.join(output_csv_path, db_name)
         
         df.to_csv(df_out, index=False)
         
@@ -1761,7 +1724,7 @@ class MachineLearning(NONCOVToolbox):
         print(f'The empty nuclear property dataset has been created and saved in: {df_out}')
         print('\n')
 
-    def make_empty_pairwise_prop_df(self, output_csv_path):
+    def make_empty_pairwise_prop_df(self, output_csv_path, db_name):
         # Headers of features = number of columns
         columns = ['Molecule', 
                     'Atom_1', 
@@ -1791,7 +1754,7 @@ class MachineLearning(NONCOVToolbox):
         
         # Create the dataframe
         df = pd.DataFrame(columns=columns)
-        df_out = os.path.join(output_csv_path, 'pairwise_nuc_prop_nmr_observables.csv')
+        df_out = os.path.join(output_csv_path, db_name)
         
         df.to_csv(df_out, index=False)
         
