@@ -26,7 +26,6 @@ import plotly.graph_objects as go
 import networkx as nx
 from scipy.spatial.distance import pdist, squareform
 import re  # RegEx
-import nmrglue as ng # NMRglue module for handling NMR spectra 
 import pandas as pd
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from scipy.spatial.transform import Rotation as R
