@@ -3,7 +3,7 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  17.10.2024                 #
+#               Last:  24.12.2024                 #
 #               -----------------                 #
 #             Stable release version              #
 #                   v.0.0.1                       #
@@ -106,7 +106,7 @@ class NMRFunctions(NONCOVToolbox):
         super().__init__()
 
     # 3x3 Matrix diagonalization and PAS shielding tensor ordering in Mehring and Haberlen conventions
-    def test_diagonalize_tensor(self, shielding_tensor):
+    def diagonalize_tensor(self, shielding_tensor):
         """
         Take NMR shielding tensor as input and perform various operations, 
         including diagonalization and ordering according to various formalisms.
@@ -164,12 +164,12 @@ class NMRFunctions(NONCOVToolbox):
         # Compute diagonal matrix, define eigenvector columns as variables and preforme matrix multiplication 
         diagonal = np.diag(eigenvals)
         print(f'Diagonalized tensor is: \n{diagonal}')
-        print('Proceeding to compute isotropic shift...\n')
+        print('Proceeding to compute isotropic shielding...\n')
 
         # Compute isotropic shift
         s_iso = np.sum(np.diag(diagonal)) / 3
         s_iso = s_iso.round(2)
-        print(f'Isotropic shift is: {s_iso} ppm')
+        print(f'Isotropic shielding is: {s_iso} ppm')
         print('Proceeding to Mehring ordering...\n')
 
         # Reorder matrix according to Mehring convention

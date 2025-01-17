@@ -97,8 +97,8 @@ class AminoStat():
         amino_acids = list(amino_acid_counts.keys())
         counts = list(amino_acid_counts.values())
         
-        colors = ['grey', 'grey','grey','grey','grey','orange','grey','grey',
-                  'grey','grey','purple','grey','grey','grey','grey','grey',
+        colors = ['grey', 'grey','grey','grey','grey','grey','grey','grey',
+                  'grey','grey','grey','grey','grey','grey','grey','grey',
                   'grey','grey','grey','grey']
 
 
@@ -108,7 +108,7 @@ class AminoStat():
         plt.xlabel('Amino Acid')
         plt.ylabel('Percentage (%)')
         #plt.ylim(0, 20)  # Set the y-axis limit to 0% to 18%
-        plt.title('FUS-NTD Amino Acids Distribution')
+        plt.title('FUS-RBDs 280-454 Amino Acids Distribution')
         
         for i in range(len(amino_acids)):
             plt.text(amino_acids[i], percentages[i], f"{counts[i]}", ha='center', va='bottom', rotation=0)
@@ -151,15 +151,15 @@ class AminoStat():
 # Example usage
 current_dir = os.getcwd()
 
-protein_sequence = os.path.join(current_dir, 'fus_ntd_human.txt')
-spaced_sequence = os.path.join(current_dir, 'spaced_fus_ntd_human.txt')
-count_file = os.path.join(current_dir, 'fus_ntd_human_amino_acid_count.txt')
-plot_file = os.path.join(current_dir, 'fus_ntd_human_amino_acid_statistics.pdf')
+protein_sequence = os.path.join(current_dir, 'fus_rbd_human_280-454.txt')
+spaced_sequence = os.path.join(current_dir, 'spaced_fus_rbd_human_280_454.txt')
+count_file = os.path.join(current_dir, 'fus_rbd_human_280_454_amino_acid_count.txt')
+plot_file = os.path.join(current_dir, 'fus_rbd_human_280_454_amino_acid_statistics.pdf')
 
 amino_stats = AminoStat()
 
-#amino_stats.space_prot_seq(protein_sequence, spaced_sequence)
-#amino_stats.count_amino_acids(spaced_sequence, count_file)
+amino_stats.space_prot_seq(protein_sequence, spaced_sequence)
+amino_stats.count_amino_acids(spaced_sequence, count_file)
 amino_stats.plot_amino_acid_statistics(count_file, plot_file)
 
 #amino_stats.define_protein_domains()
