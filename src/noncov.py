@@ -912,7 +912,7 @@ class OrcaAnalysis(NONCOVToolbox):
 
             for i, line in enumerate(lines):
                 # Start searching after encountering the CHEMICAL SHIFTS flag
-                if 'CHEMICAL SHIELDINGS (ppm)' in line:
+                if 'CHEMICAL SHIFTS' in line:
                     start_search = True
                     continue
 
