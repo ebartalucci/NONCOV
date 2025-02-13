@@ -725,7 +725,8 @@ class OrcaAnalysis(NONCOVToolbox):
             lines = f.readlines()
             count = 0
             for line in lines:
-                if line.strip().startswith("COMPOUND JOB"):
+                #if line.strip().startswith("COMPOUND JOB"):
+                if line.strip().startswith("$$$$$$$$$$$$$$$$  JOB NUMBER"):
                     count += 1
             return count
 
@@ -814,7 +815,8 @@ class OrcaAnalysis(NONCOVToolbox):
             return 
 
         # Make use of RegEx for matching JOB lines
-        job_matching = re.compile(r'COMPOUND\s+JOB\s+(\d+)')
+        #job_matching = re.compile(r'COMPOUND\s+JOB\s+(\d+)')
+        job_matching = re.compile(r'\$+\s*JOB\s+NUMBER\s+(\d+) \$+')
 
         # Extract initial ORCA text before job files to append to splitted files
         initial_content = self.extract_initial_output_content(output_file, job_matching)
