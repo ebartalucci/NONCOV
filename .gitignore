@@ -1,12 +1,5 @@
-plot_sequential_NMR_properties/run_all_displaced_distances.mpi8.out
-NC2Ipy_app/node_modules
-test/test_data/
-test/test_data/
+misc_ignore/
+examples/KLaL_Cation_Pi_SGP/raw/
+examples/benzene_H20_relaxH/raw/
+examples/fragments/raw/
 scratch/OrcaAnalysis/
-scratch/StructureModifier/
-examples/
-temp/
-tests/
-structs/
-scratch/PlotDFT/
-data/

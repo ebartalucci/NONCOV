@@ -3,10 +3,10 @@
 # ----------------------------------------------- #
 #               Ettore Bartalucci                 #
 #               First: 26.02.2024                 #
-#               Last:  24.12.2024                 #
+#               Last:  12.03.2021                 #
 #               -----------------                 #
 #             Stable release version              #
-#                   v.0.0.1                       #
+#                   v.0.1.0                       #
 #                                                 #
 ###################################################
 
@@ -66,7 +66,7 @@ class NONCOVHeader:
             print("          #################################################\n")
                 
             # Print versions
-            version = '0.0.1'
+            version = '0.1.0'
             print("Stable version: {}\n\n".format(version))
             print("Working python version:")
             print(sys.version)
@@ -118,6 +118,9 @@ class NMRFunctions(NONCOVToolbox):
         :param shielding_tensor: original shielding tensor in molecular frame
         :param s_iso: isotropic chemical shift from symmetrized tensor
         :param diagonal_mehring: PAS components with magnitude ordering (IUPAC)
+        :param diagonal_haberlen: PAS sorted according to haberlen convention
+        :param anisotropy: largest separation from center of gravity (iso shift)
+        :param asymmetry: deviation from axially symmetric tensor
         :param eigenvals: unsorted PAS components
         :param eigenvecs: rotation matrix
         :param symmetry: second-rank tensor symmetry
@@ -210,12 +213,23 @@ class NMRFunctions(NONCOVToolbox):
         print(f'Rotational symmetry is: \n{is_rotationally_symmetric}\n')
         print('Proceeding to compute span and skew of the tensor...\n')
         
+        # Span and Skew calculations
         span = sigma_33 - sigma_11
         span = span.round(2)
         skew = 3*(sigma_22-s_iso)/span
         skew = skew.round(2)
         print(f'Span is: {span}\n')
         print(f'Skew is: {skew}\n')
+
+        # Haberlen convention 
+        diagonal_haberlen = [eigenvals[0]-s_iso, eigenvals[1]-s_iso, eigenvals[2]-s_iso]        
+        red_anisotropy = diagonal_haberlen[0]
+        asymmetry = (diagonal_haberlen[2]-diagonal_haberlen[1]) / diagonal_haberlen[0]
+        anisotropy = (3*diagonal_haberlen[0])/2
+        print(f'Haberlen is: {diagonal_haberlen}\n')
+        print(f'Reduced anisotropy is: {red_anisotropy}\n')
+        print(f'Asymmetry is: {asymmetry}\n')
+        print(f'Anisotropy is: {anisotropy}\n')
         
         print('Summary of NMR parameters:\n')
         print(f'Shielding tensor: \n{shielding_tensor} \n')
@@ -224,13 +238,17 @@ class NMRFunctions(NONCOVToolbox):
         print(f'Unsorted Eigenvals: \n{eigenvals} \n')
         print(f'Span is: {span}\n')
         print(f'Skew is: {skew}\n')
+        print(f'Haberlen is: {diagonal_haberlen}\n')
+        print(f'Reduced anisotropy is: {red_anisotropy}\n')
+        print(f'Asymmetry is: {asymmetry}\n')
+        print(f'Anisotropy is: {anisotropy}\n')
 
         print('Proceeding...\n')
         print('Call tensor_to_euler for Euler angles extraction from eigenvectors...\n')
 
         print("# -------------------------------------------------- #")
 
-        return shielding_tensor, s_iso, diagonal_mehring, eigenvals, eigenvecs, symmetry, span, skew
+        return shielding_tensor, s_iso, diagonal_mehring, eigenvals, eigenvecs, symmetry, span, skew, diagonal_haberlen, red_anisotropy, asymmetry, anisotropy
 
     
     # Backcalculate Euler angles from eigenvector matrix
@@ -1174,7 +1192,7 @@ class MolView(NONCOVToolbox):
 
     def radiusovaloid(self, sxx, syy, szz, alpha, beta, gamma, theta, phi):
         '''
-        to check
+        to check, taken from TensorView source code ()
         '''
         r_ov = (sxx * (np.sin(gamma) * np.sin(alpha - phi) * np.sin(theta) + np.cos(gamma) * (np.cos(theta) * np.sin(beta) - np.cos(beta) * np.cos(alpha - phi) * np.sin(theta))) ** 2
             + syy * (np.cos(theta) * np.sin(beta) * np.sin(gamma) - (np.cos(beta) * np.cos(alpha - phi) * np.sin(gamma) + np.cos(gamma) * np.sin(alpha - phi) * np.sin(theta))) ** 2

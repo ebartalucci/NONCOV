@@ -7,6 +7,6 @@
 \  The following list shall be acknowledged:    \
 \                                               \
 \  - Olivia Gammp, M.Sc. @ ETH Zurich           \
-\  - Marwin Segler, Microsoft AI
-
+\  - Marwin Segler, Dr. @ Microsoft AI		\
+\  - Maria Fyta, Prof. Dr. @ RWTH Aachen        \
 \* --------------------------------------------*\
