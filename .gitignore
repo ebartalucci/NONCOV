@@ -1,26 +1,18 @@
 misc_ignore/
-
 docs/
-
 examples/
-
 scratch/
-
 scripts/
-
 examples/KLaL_Cation_Pi_SGP/raw/
 examples/benzene_H20_relaxH/raw/
 examples/fragments/raw/
 examples/KLaL_Cation_PI_Quantum_rotor/raw/
 examples/KLaL_Cation_Pi_SGP/tocheck.zip
 examples/KLaL_Cation_Pi_SGP/KLaL_cation_pi_RCCE_opt.mpi8.out
-
 scratch/OrcaAnalysis/
-
 scratch/OrcaAnalysis/split_orca_output/KLaL_Cation_PI_SGP/
 scratch/OrcaAnalysis/split_orca_output/benzene_H2O_relaxH/
 scratch/OrcaAnalysis/split_orca_output/fragments/
 scratch/OrcaAnalysis/split_orca_output/KLaL_Cation_PI_Quantum_rotor/
-
 data/
 
