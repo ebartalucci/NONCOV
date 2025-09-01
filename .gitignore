@@ -1,5 +1,13 @@
 misc_ignore/
 
+docs/
+
+examples/
+
+scratch/
+
+scripts/
+
 examples/KLaL_Cation_Pi_SGP/raw/
 examples/benzene_H20_relaxH/raw/
 examples/fragments/raw/
